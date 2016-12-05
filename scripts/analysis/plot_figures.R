@@ -5,6 +5,7 @@
 # Produces Figures 2 - 4
 options(stringsAsFactors = F)
 
+library(branchpointer)
 library(ggplot2)
 library(cowplot)
 library(stringr)
@@ -16,7 +17,6 @@ number_introns_pal=rev(c('#ffffb2','#fecc5c','#fd8d3c','#f03b20','#bd0026'))
 nt_cols=c("#359646","#4D7ABE","#FAA859","#CB3634")
 BP_multi_colors=c("#bababa", "#1a9850", "#a6d96a", "#ffffbf","#fdae61")
 BP_multi_colors=c("#bababa", "#deebf7", "#9ecae1", "#4292c6","#08519c")
-
 
 ### Figure 1A - locations of Mercer Branchpoints ###
 
@@ -147,7 +147,7 @@ FigureS4
 dev.off()
 
 
-###### Figure 3 - Features of introns with branchpoint multiplicity ######
+###### Figure S7,  3 - Features of introns with branchpoint multiplicity ######
 
 quick_wilcox(branchpoints_introns[branchpoints_introns$status=="predicted",], "intron_size")
 quick_wilcox(branchpoints_introns[branchpoints_introns$status=="predicted" & branchpoints_introns$gene_biotype == "protein_coding",], "dex_mean_log")
@@ -158,16 +158,6 @@ branchpoints_introns$max_U2 <- max_U2$U2_binding_energy[match(branchpoints_intro
 
 quick_wilcox(branchpoints_introns[branchpoints_introns$status=="predicted",], "max_U2")
 
-ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",], 
-       aes(gene_biotype_broad,max_U2, fill=factor(gene_biotype_broad))) + 
-  geom_violin(scale="width", lwd=0.25) + 
-  geom_boxplot(alpha=0, width=0.5, outlier.size = 0.25, lwd=0.25) +
-  scale_y_log10(name="Intron size (nt)")+ 
-  scale_fill_manual(values = BP_multi_colors, name="Annotated branchpoints") + 
-  theme_bw() + 
-  theme(legend.position = "none",text=element_text(size=10))+ scale_x_discrete(name="Annotated branchpoints") +
-  facet_wrap(~predicted_BPs_factor)
-
 aggregate(max_U2 ~ gene_biotype_broad, branchpoints_introns[branchpoints_introns$predicted_BPs==2,], median)
 
 wilcox.test(branchpoints_introns$max_U2[branchpoints_introns$predicted_BPs!=0 & 
@@ -175,7 +165,7 @@ wilcox.test(branchpoints_introns$max_U2[branchpoints_introns$predicted_BPs!=0 &
             branchpoints_introns$max_U2[branchpoints_introns$predicted_BPs!=0 & 
                                           branchpoints_introns$gene_biotype_broad == "protein_coding"])
 
-Figure3A=ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",], 
+FigureS7A=ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",], 
                        aes(predicted_BPs_factor,intron_size, fill=factor(predicted_BPs_factor))) + 
   geom_violin(scale="width", lwd=0.25) + 
   geom_boxplot(alpha=0, width=0.5, outlier.size = 0.25, lwd=0.25) +
@@ -184,7 +174,7 @@ Figure3A=ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",],
   theme_bw() + 
   theme(legend.position = "none",text=element_text(size=10))+ scale_x_discrete(name="Annotated branchpoints")
 
-Figure3B=ggplot(branchpoints_introns[branchpoints_introns$gene_biotype =="protein_coding" & 
+FigureS7B=ggplot(branchpoints_introns[branchpoints_introns$gene_biotype =="protein_coding" & 
                                        branchpoints_introns$status=="predicted",], 
                        aes(y=dex_mean_log, fill=factor(predicted_BPs_factor), x=predicted_BPs_factor)) + 
   scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
@@ -192,10 +182,10 @@ Figure3B=ggplot(branchpoints_introns[branchpoints_introns$gene_biotype =="protei
   geom_violin(scale="width", lwd=0.25) + 
   geom_boxplot(alpha=0, width=0.5, outlier.size = 0.25, lwd=0.25) + 
   scale_x_discrete(name="Annotated branchpoints") + 
-  scale_y_continuous(name="log10\n(exon normalised counts + 0.1)") + 
+  scale_y_continuous(name="log10 exon expression") + 
   theme(legend.position = "none",text=element_text(size=10)) 
 
-Figure3C=ggplot(branchpoints_introns[which(branchpoints_introns$status=="predicted" & !is.na(branchpoints_introns$cons_intron_mean)),], 
+FigureS7C=ggplot(branchpoints_introns[which(branchpoints_introns$status=="predicted" & !is.na(branchpoints_introns$cons_intron_mean)),], 
   aes(y=cons_intron_mean, fill=factor(predicted_BPs_factor), x=predicted_BPs_factor)) + 
   geom_violin(scale="width", lwd=0.25) + 
   geom_boxplot(alpha=0, width=0.5, outlier.size = 0.25, lwd=0.25) +
@@ -204,6 +194,17 @@ Figure3C=ggplot(branchpoints_introns[which(branchpoints_introns$status=="predict
   scale_x_discrete(name="Annotated branchpoints") + 
   scale_y_continuous(name="mean intron conservation") +
   theme(legend.position = "none",text=element_text(size=10))
+
+FigureS7 <- ggdraw() + 
+  draw_plot(FigureS7A, 0.00,0, 0.33,1) + 
+  draw_plot(FigureS7B, 0.33,0, 0.33,1) + 
+  draw_plot(FigureS7C, 0.66,0, 0.33,1) + 
+  draw_plot_label(c("A","B","C"), c(0,0.33,0.66), c(1,1,1), size=18)
+FigureS7
+
+pdf("Figures/FigureS7.pdf", height=7,width=6.69, useDingbats = FALSE)
+Figure3
+dev.off()
 
 #no significant difference in multiplicity between gene biotype class
 tbl <- table(branchpoints_introns$gene_biotype_broad[branchpoints_introns$gene_biotype_broad !="other" & branchpoints_introns$status == "predicted"], 
@@ -235,20 +236,17 @@ tbl <- table(branchpoints_introns$gencode_alternative5_factor[branchpoints_intro
              branchpoints_introns$multiplicity[branchpoints_introns$status == "predicted"])
 chisq.test(tbl)
 
-alt_5exons <- data.frame(branchpoint_multiplicity=rep(c("1","2+"),each=7), 
-                         alternative_5exons=rep(rownames(tbl),2),
-                         raw_count=c(tbl[,1],tbl[,2]),
-                         total = rep(colSums(tbl),each=7))
-alt_5exons$percent_count <- alt_5exons$raw_count/alt_5exons$total
+norm_tabl <- tbl
+norm_tabl[,1] <- tbl[,1]/sum(tbl[,1]) *10000
+norm_tabl[,2] <- tbl[,2]/sum(tbl[,2]) *10000
 
-Figure3D=ggplot(alt_5exons, aes(x=alternative_5exons, fill=branchpoint_multiplicity, y=percent_count)) + 
-    geom_bar(stat="identity", position="dodge") +
-    scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
-    theme_bw() +
-    scale_x_discrete(name="number of 5' exons associated with branchpoint") + 
-    scale_y_continuous(name="percent of introns") +
-    theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches"))
+tbl_pheat <- norm_tabl
+tbl_pheat[,1] <- norm_tabl[,1]/rowSums(norm_tabl)
+tbl_pheat[,2] <- norm_tabl[,2]/rowSums(norm_tabl)
 
+pdf("Figures/Figure3B.pdf", height=2,width=2, useDingbats = FALSE)
+pheatmap(tbl_pheat, cluster_cols = F,cluster_rows = F,annotation_names_row=T, display_numbers = tbl)
+dev.off()
 
 #and SJ reads
 branchpoints_introns$`alternative5'annotated_factor`=branchpoints_introns$`alternative5'annotated`
@@ -260,10 +258,10 @@ chisq.test(tbl)
 wilcox.test((branchpoints_introns$var_maxentscan[branchpoints_introns$predicted_BPs > 1 & branchpoints_introns$gencode_alternative5 > 1]),
             (branchpoints_introns$var_maxentscan[branchpoints_introns$predicted_BPs == 1 & branchpoints_introns$gencode_alternative5 > 1]))
 
-Figure3E=ggplot(branchpoints_introns[branchpoints_introns$gencode_alternative5 > 1 & branchpoints_introns$annotated_BPs_factor!="0",], 
+Figure3C=ggplot(branchpoints_introns[branchpoints_introns$gencode_alternative5 > 1 & branchpoints_introns$annotated_BPs_factor!="0",], 
        aes(x=annotated_BPs_factor, y=var_maxentscan, fill=annotated_BPs_factor)) + 
     geom_boxplot( outlier.size = 0.25, lwd=0.25) + 
-    scale_y_log10(name="5' splice site strength variation") + 
+    scale_y_log10(name="5' splice site\nstrength variation") + 
     scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
     theme_bw() +
     theme(text=element_text(size=10),legend.position="none") + 
@@ -287,37 +285,38 @@ snp_locs$Variant_location <- gsub("multiple BPs", "2+", snp_locs$Variant_locatio
 snp_locs$Var2 <- gsub("multiple BPs", "2+", snp_locs$Var2)
 snp_locs$Var2 <- gsub("single BP", "1 ", snp_locs$Var2)
 
-head(snp_locs)
-tbl <- table(snp_locs_all$snp_in[snp_locs_all$set=="GTEx" & snp_locs_all$multi_BP !="0" & !is.na(snp_locs_all$snp_in)], 
-             snp_locs_all$multi_BP[snp_locs_all$set=="GTEx" & snp_locs_all$multi_BP !="0" & !is.na(snp_locs_all$snp_in)])
+tbl <- table(processed_GTEX$snp_in[processed_GTEX$multi_BP!="0" & !is.na(processed_GTEX$snp_in)],
+      processed_GTEX$multi_BP[processed_GTEX$multi_BP!="0" & !is.na(processed_GTEX$snp_in)])
 
 c <- chisq.test(tbl)
 c$p.value
 
+snp_locs$Variant_location_reorder <- factor(snp_locs$Variant_location,levels=c("BP to 5'SS | 1 ",
+                                                                                  "BP to 5'SS | 2+",
+                                                                                  "BP | 1 ",
+                                                                                  "BP | 2+",
+                                                                                  "3'SS to BP | 1 ",
+                                                                                  "3'SS to BP | 2+",
+                                                                                  "3'SS | 1 ",
+                                                                                  "3'SS | 2+"))
 
-Figure3F=ggplot(snp_locs, aes(x=Variant_location , fill=Var2, y=percent_Freq)) + 
+Figure3A=ggplot(snp_locs, aes(x=Variant_location_reorder , fill=Var2, y=percent_Freq)) + 
     geom_bar(stat="identity",position="dodge") +  
-    geom_text(aes(x=Variant_location , y=percent_Freq + 0.05 * sign(percent_Freq), label=Freq), hjust=0.5, size=2) +
+    geom_text(aes(x=Variant_location_reorder , y=percent_Freq + 0.05 * sign(percent_Freq), label=Freq), hjust=0.5, size=2) +
     theme_bw() +
-    theme(text=element_text(size=10), axis.text.x = element_text(angle = 90, hjust = 1),
+    theme(text=element_text(size=10), axis.text.x = element_text(angle = 45, hjust = 1),
           legend.position="none") + 
     scale_fill_manual(values = BP_multi_colors[c(2,5,4,3)],name="Annotated branchpoints",labels=c("1","2+")) + 
-    scale_x_discrete(name="variant location", labels=rep(c("3'SS", "3'SS to BP", "BP","5'SS to BP"), each=2)) + 
-    scale_y_continuous(name="relative common SNP frequency")
-
-legend_Figure3=g_legend(Figure3D)
+    scale_x_discrete(name="variant location", labels=rep(c("5'SS to BP", "BP","3'SS to BP","3'SS"), each=2)) + 
+    scale_y_continuous(name="Relative common\nSNP frequency")
 
 Figure3 <- ggdraw() + 
-    draw_plot(Figure3A, 0.00,0.70, 0.33,0.3) + 
-    draw_plot(Figure3B, 0.33,0.70, 0.33,0.3) + 
-    draw_plot(Figure3C, 0.66,0.70, 0.33,0.3) + 
-    draw_plot(Figure3D + theme(legend.position="none"), 0.00,0.00, 0.66,0.3)+ 
-    draw_plot(Figure3E, 0.66,0.00, 0.33,0.3) + 
-    draw_plot(Figure3F, 0.33,0.30, 0.66,0.4) +
-    draw_plot(legend_Figure3, 0.00,0.35, 0.33,0.4) +
-    draw_plot_label(c("A","B","C", "D","E","F"), c(0,0.33,0.66,0,0,0.66), c(1,1,1,0.7,0.3,0.3), size=18)
+    draw_plot(Figure3A, 0.00,0.1, 0.6,0.55) + 
+    draw_plot(Figure3C, 0.6,0, 0.4,0.4) + 
+  
+    draw_plot_label(c("A","B","C"), c(0,0.6,0.6), c(1,1,0.4), size=18)
 Figure3
-pdf("Figures/Figure3.pdf", height=7,width=6.69, useDingbats = FALSE)
+pdf("Figures/Figure3.pdf", height=5,width=6.69, useDingbats = FALSE)
 Figure3
 dev.off()
 
@@ -380,10 +379,10 @@ for(type in keep_gene_types){
 }
 
 
-####### Supplementary Figure 7 -- exon skipping #######
+####### Supplementary Figure 8 -- exon skipping #######
 load("data/exon_skipping.Rdata")
 
-FigureS7 <- ggplot(splicing_strength, aes(x=variable, lower=lower, upper=upper, 
+FigureS8 <- ggplot(splicing_strength, aes(x=variable, lower=lower, upper=upper, 
                                 middle=middle, ymin=ymin, ymax=ymax, 
                                 fill=condition1)) + 
     geom_boxplot(stat="identity") + 
@@ -395,8 +394,8 @@ FigureS7 <- ggplot(splicing_strength, aes(x=variable, lower=lower, upper=upper,
     theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches"),axis.text.x = element_text(angle = 90, hjust = 1))+
     scale_x_discrete(name="splicing element")
 
-pdf("Figures/FigureS7.pdf",useDingbats = F, height=3.5, width=6.69)
-FigureS7
+pdf("Figures/FigureS8.pdf",useDingbats = F, height=3.5, width=6.69)
+FigureS8
 dev.off()
 
 wilcox.test(branchpoints_introns_sa$splicesite_5strength[branchpoints_introns_sa$sa1=="skipped_exon" & branchpoints_introns_sa$sa2=="E1"],
@@ -421,7 +420,7 @@ tbl <- table(branchpoints_introns_sa$sa1[branchpoints_introns_sa$status == "pred
 chisq.test(tbl)
 
 
-###### Figure 4 - Disease causing variants affecting BPs #######
+###### Figure S9, 4 - Disease causing variants affecting BPs #######
 #locations of clinVar intronic variants and GTEX variants
 
 load("data/diseaseVariants.Rdata")
@@ -437,7 +436,7 @@ processed_GTEX$set <- "GTEx"
 
 snp_locs_all <- rbind(processed_GTEX, clinVar_processed[,match(colnames(processed_GTEX), colnames(clinVar_processed))])
 
-FigureS8=ggplot(snp_locs_all[snp_locs_all$multi_BP!="0" & !is.na(snp_locs_all$snp_in),], 
+FigureS9=ggplot(snp_locs_all[snp_locs_all$multi_BP!="0" & !is.na(snp_locs_all$snp_in),], 
        aes(x=snp_in, fill=multi_BP)) + 
     geom_bar() +  
     theme_bw() +
@@ -445,8 +444,8 @@ FigureS8=ggplot(snp_locs_all[snp_locs_all$multi_BP!="0" & !is.na(snp_locs_all$sn
     theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches")) +
     facet_wrap(~set, scales="free") +scale_x_discrete(name="variant location", labels=c("3'SS", "3'SS to BP", "BP","5'SS to BP"))
 
-pdf("Figures/FigureS8.pdf", width=6.69, height=3)
-FigureS8
+pdf("Figures/FigureS9.pdf", width=6.69, height=3)
+FigureS9
 dev.off()
 
 chisq.test(table(clinVar_processed$snp_in[clinVar_processed$multi_BP!=0], clinVar_processed$multi_BP[clinVar_processed$multi_BP!=0]))

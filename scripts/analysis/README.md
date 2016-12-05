@@ -53,7 +53,6 @@ Uses Gencodev19 annotations due to splice jjunction reads being aligned to this 
 
 `gencodev19_alternative_splicing.R`
 
-
 `plot_figures.R`
 Makes figures and computes statistics for genome wide predictions.
 
@@ -65,5 +64,6 @@ Figure 4. Effect of the SNP rs2269219 on branchpoints in Fech.
 Figure S4. Introns with annotated branchpoints from the Mercer annotation (known), and the branchpoint detection model (predicted) for the gene biotypes long noncoding RNA, protein coding, pseudogenes, and all other biotypes. The default cut-off score of 0.5 was used for predictions. 
 Figure S5. Size of introns with single or multiple annotated branchpoints from the Mercer branchpoint annotation. 
 Figure S6. Size of introns with single or multiple annotated branchpoints in parent gene biotypes. Only biotypes with at least 1000 branchpoint annotated introns are shown. 
-Figure S7. Splicing element strength at constitutively spliced and skipped exon triplets. 
-Figure S8. Locations of all intronic (1-50nt from the 3’ exon) ClinVar and GTEx SNPs.
+Figure S7. Features of intron usage associated with branchpoint multiplicity.
+Figure S8. Splicing element strength at constitutively spliced and skipped exon triplets. 
+Figure S9. Locations of all intronic (1-50nt from the 3’ exon) ClinVar and GTEx SNPs.
