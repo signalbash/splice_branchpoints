@@ -17,8 +17,8 @@ library(PRROC)
 nt_cols <- c("#359646","#4D7ABE","#FAA859","#CB3634")
 
 ###### load in testing data and model and reformat ######
-load("data/Preprocessed_data_44_small.RData")
-load("data/branchpoint44_ALL.Rdata")
+load("data/Preprocessed_data_small.RData")
+load("data/branchpoint_ALL.Rdata")
 
 #format data
 testing_remade <- rbind(testing[keepAt,], testing[-keepAt,])
@@ -69,6 +69,35 @@ end <- as.numeric(matrix(unlist(str_split(pos,"-")), byrow = T, ncol = 2)[,2])
 class <- matrix(unlist(str_split(test_dataset$new_ID,"_")), 
                 byrow = T, ncol = 3)[,3]
 test_dataset <- cbind(chrom, start,end,strand,test_dataset)
+
+###### Find optimal probability cutoff - SVM ######
+
+sens <- vector()
+accuracy <- vector()
+accuracy_b <- vector()
+ppv <- vector()
+vals <- seq(from=0.01, to=0.99, by=0.01)
+
+for(v in seq(along=vals)){
+  
+  test_dataset$Class <- "NEG"
+  test_dataset$Class[test_dataset$newFeat > vals[v]] <- "HC"
+  keep <- which(test_dataset$newFeat > vals[v] & test_dataset$newFeat < vals[v]+0.01)
+  c <- confusionMatrix(test_dataset$Class, test_dataset$set)
+  sens[v] <- as.numeric(c$byClass[1])
+  ppv[v] <- as.numeric(c$byClass[3])
+  accuracy[v] <- as.numeric(c$overall[1])
+  accuracy_b[v] <- as.numeric(c$byClass[11])
+  
+}
+F1 <- 2*((ppv*sens)/(ppv+sens))
+cutoff_performance_SVM <- data.frame(vals,accuracy,accuracy_b,sens,ppv,F1)
+
+val <- cutoff_performance_SVM$vals[which.max(cutoff_performance_SVM$F1)]
+test_dataset$Class <- "NEG"
+test_dataset$Class[test_dataset$newFeat > val] <- "HC"
+keep <- which(test_dataset$newFeat > val & test_dataset$newFeat < val+0.01)
+c_SVM <- confusionMatrix(test_dataset$Class, test_dataset$set)
 
 ###### Find optimal probability cutoff ######
 
