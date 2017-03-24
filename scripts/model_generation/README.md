@@ -1,4 +1,4 @@
-##Model Generation
+## Model Generation
 
 **1. Reconfigure gencode annotations to table format**
 
@@ -15,7 +15,7 @@ Run by chromosome
 while read c; do scripts/model_generation/get_info.sh $c $PWD; done < scripts/chroms.txt
 ```
 
-`get_info_44.sh` calls the following scripts:
+`get_info.sh` calls the following scripts:
 
 * `get_branchpoint_loc.R` makes: 
   * `gencode.v12.condensed.exons_chrZ.csv` Unique exons from the GENCODE12 annotation, renamed as transcriptid_exonnum
@@ -90,3 +90,17 @@ Rscript scripts/model_generation/process_rfe_bp.R
 ```
 Rscript scripts/model_generation/Make_final_model.R
 ```
+
+**5. Feature removal
+```
+#single variables
+Rscript scripts/model_generation/Make_model_removeVars1.R
+#grouped variables
+Rscript scripts/model_generation/Make_model_removeVarsSet.R
+```
+
+**6. Naive Bayes Model
+```
+Rscript scripts/model_generation/Make_model_nb.R
+```
+
