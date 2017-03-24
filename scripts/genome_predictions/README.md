@@ -1,6 +1,6 @@
-#Download annotations
+# Download annotations
 
-##Gencode annotations
+## Gencode annotations
 *Gencodev24*
 ```
 wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/gencode.v24.annotation.gtf.gz
@@ -40,7 +40,7 @@ Rscript ../../scripts/genome_predictions/gtf_to_exon_annotation.R -a gencode.v12
 ../../scripts/genome_predictions/format_exon_annotations.sh gencode.vM10.annotation.gtf gencode.vM10.exons.txt
 ```
 
-##Ensembl annotations
+## Ensembl annotations
 *Danio rerio*
 ```
 wget ftp://ftp.ensembl.org/pub/release-85/gtf/danio_rerio/Danio_rerio.GRCz10.85.gtf.gz

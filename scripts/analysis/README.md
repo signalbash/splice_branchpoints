@@ -4,7 +4,7 @@
 Evaluate performance metrics of branchpointer on the testing dataset
 Compares performance with SVM-BPfinder and HSF
 
-*Figures* 
+**Figures** 
 Figure 1D-F. Development and erformance of the branchpoint detection model. 
 Figure S1. branchpointer classification performance metrics for probability cutoffs 0.01-0.99. 
 Figure S2. Precision recall curve for branchpointer.
@@ -56,7 +56,7 @@ Uses Gencodev19 annotations due to splice jjunction reads being aligned to this 
 `plot_figures.R`
 Makes figures and computes statistics for genome wide predictions.
 
-*Figures*
+**Figures**
 Figure 2. Prediction of splicing branchpoints in GENCODE introns.
 Figure 3. Features of introns with branchpoint multiplicity.
 Figure 4. Effect of the SNP rs2269219 on branchpoints in Fech.
