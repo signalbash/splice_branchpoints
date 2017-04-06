@@ -5,10 +5,11 @@ Evaluate performance metrics of branchpointer on the testing dataset
 Compares performance with SVM-BPfinder and HSF
 
 **Figures** 
-Figure 1D-F. Development and erformance of the branchpoint detection model. 
-Figure S1. branchpointer classification performance metrics for probability cutoffs 0.01-0.99. 
-Figure S2. Precision recall curve for branchpointer.
-Figure S3. Frequency of each two nucleotide branchpoint motif at each probability score above 0.5.  
+Figure 1B-E. Development and performance of the branchpoint detection model. 
+Figure 2A-B. Branchpoint nucleotide sequence motifs
+Figure S2. Changes in F1 ratio (A) and accuracy (B) following variable removal prior to model training.
+Figure S3. branchpointer classification performance metrics for probability cutoffs 0.01-0.99. 
+
 
 ### genome_wide_predictions
 
@@ -45,6 +46,10 @@ Formats ClinVar variants.
 Predicts branchpoints in reference and alternative sequences using branchpointer.
 Saves RData as `"data/diseaseVariants.Rdata"`
 
+`bp_per_species_figure.R`
+Makes: 
+Figure 6. Branchpoint annotations in model organisms. 
+
 ### Alternative splicing annotations 
 
 `alternative_splicing_annotate.R`
@@ -57,13 +62,14 @@ Uses Gencodev19 annotations due to splice jjunction reads being aligned to this 
 Makes figures and computes statistics for genome wide predictions.
 
 **Figures**
-Figure 2. Prediction of splicing branchpoints in GENCODE introns.
-Figure 3. Features of introns with branchpoint multiplicity.
-Figure 4. Effect of the SNP rs2269219 on branchpoints in Fech.
+Figure 2. Branchpoint nucleotide sequence motif ???.
+Figure 3. Prediction of splicing branchpoints in GENCODE introns.
+Figure 4. Features of introns with branchpoint multiplicity.
+Figure 5. Effect of the SNP rs2269219 on branchpoints in Fech.
 
-Figure S4. Introns with annotated branchpoints from the Mercer annotation (known), and the branchpoint detection model (predicted) for the gene biotypes long noncoding RNA, protein coding, pseudogenes, and all other biotypes. The default cut-off score of 0.5 was used for predictions. 
-Figure S5. Size of introns with single or multiple annotated branchpoints from the Mercer branchpoint annotation. 
-Figure S6. Size of introns with single or multiple annotated branchpoints in parent gene biotypes. Only biotypes with at least 1000 branchpoint annotated introns are shown. 
-Figure S7. Features of intron usage associated with branchpoint multiplicity.
+
+Figure S4. Human introns with annotated branchpoints from the high confidence Mercer annotation, the branchpointer model (Predicted) and those with no branchpoint (No Annotation).
+Figure S5. Introns with annotated branchpoints for gene biotypes.
+Figure S6. Size of introns with single or multiple annotated branchpoints from the Mercer et al. branchpoint annotation.
+Figure S7. Features of intron usage associated with branchpoint multiplicity. 
 Figure S8. Splicing element strength at constitutively spliced and skipped exon triplets. 
-Figure S9. Locations of all intronic (1-50nt from the 3’ exon) ClinVar and GTEx SNPs.

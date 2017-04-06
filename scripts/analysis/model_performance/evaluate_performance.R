@@ -14,6 +14,15 @@ library(cowplot)
 library(reshape2)
 library(PRROC)
 
+theme_figure <- theme_bw()+ theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches"),
+                                  panel.grid.major = element_blank(),
+                                  panel.grid.minor = element_blank(),
+                                  panel.border = element_blank(),
+                                  axis.line.x = element_line(), 
+                                  axis.line.y = element_line(), 
+                                  panel.background = element_rect(colour = "black", size=1, fill=NA),
+                                  plot.title = element_text(hjust = 0.5))
+
 nt_cols <- c("#359646","#4D7ABE","#FAA859","#CB3634")
 
 ###### load in testing data and model and reformat ######
@@ -125,45 +134,48 @@ cutoff_performance <- data.frame(vals,accuracy,accuracy_b,sens,ppv,F1)
 write.csv(cutoff_performance, "data/cutoff_performance.csv")
 BP_prob_cutoff <- cutoff_performance$vals[which.max(cutoff_performance$F1)]
 
-Figure1F = ggplot(cutoff_performance, aes(x=vals, y=F1))  +
+Figure1E = ggplot(cutoff_performance, aes(x=vals, y=F1))  +
   geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=1, shape=3)+ 
-  theme_bw() +
-  scale_x_continuous(name="branchpointer probability score cut-off") +
+  scale_x_continuous(name="Branchpointer Probability Score") +
   scale_y_continuous(name="F1") + 
-  theme(text=element_text(size=10))
+  theme_figure + ggtitle(label="Discrimination")
 
-SuppFigure_1A = ggplot(cutoff_performance, aes(x=vals, y=ppv))  +
+SuppFigure2A = ggplot(cutoff_performance, aes(x=vals, y=ppv))  +
   geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=1, shape=3)+ 
-  theme_bw() +
-  scale_x_continuous(name="branchpointer\nprobability score cut-off") +
-  scale_y_continuous(name="positive predictive value") + 
-  theme(text=element_text(size=10))
+  scale_x_continuous(name="Branchpointer Probability Score") +
+  scale_y_continuous(name="Positive Predictive Value") + 
+  theme_figure
 
-SuppFigure_1B = ggplot(cutoff_performance, aes(x=vals, y=sens))  +
+SuppFigure2B = ggplot(cutoff_performance, aes(x=vals, y=sens))  +
   geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=1, shape=3)+ 
-  theme_bw() +
-  scale_x_continuous(name="branchpointer\nprobability score cut-off") +
-  scale_y_continuous(name="sensitivity") + 
-  theme(text=element_text(size=10))
-
-SuppFigure_1C=ggplot(cutoff_performance, aes(x=vals, y=accuracy))  +
+  scale_x_continuous(name="Branchpointer Probability Score") +
+  scale_y_continuous(name="Sensitivity") + 
+  theme_figure
+SuppFigure2C=ggplot(cutoff_performance, aes(x=vals, y=accuracy))  +
   geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=1, shape=3)+ 
-  theme_bw() +
-  scale_x_continuous(name="branchpointer\nprobability score cut-off") +
-  scale_y_continuous(name="accuracy") + 
-  theme(text=element_text(size=10))
-
-SuppFigure_1D = ggplot(cutoff_performance, aes(x=vals, y=accuracy_b))  +
+  scale_x_continuous(name="Branchpointer Probability Score") +
+  scale_y_continuous(name="Accuracy") + 
+  theme_figure
+SuppFigure2D=ggplot(cutoff_performance, aes(x=vals, y=accuracy_b))  +
   geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=1, shape=3)+ 
-  theme_bw() +
-  scale_x_continuous(name="branchpointer\nprobability score cut-off") +
-  scale_y_continuous(name="balanced accuracy") + 
-  theme(text=element_text(size=10))
+  scale_x_continuous(name="Branchpointer Probability Score") +
+  scale_y_continuous(name="Balanced Accuracy") + 
+  theme_figure
+
+FigureS2 = ggdraw() + draw_plot(SuppFigure2A, 0,0.5,0.5,0.5) + 
+  draw_plot(SuppFigure2B, 0.5,0.5,0.5,0.5) + 
+  draw_plot(SuppFigure2C, 0,0,0.5,0.5) + 
+  draw_plot(SuppFigure2D, 0.5,0,0.5,0.5) + 
+  draw_plot_label(c("A","B","C","D"), c(0,0.5,0,0.5), c(1,1,0.5,0.5), size=18)
+
+pdf("Figures/FigureS2.pdf", useDingbats = F, height=6.69, width=6.69)
+FigureS2
+dev.off()
 
 #set branchpointer classes
 test_dataset$Class <- "NEG"
@@ -186,7 +198,7 @@ gbm_importance <- data.frame(gbm_imp$importance)
 gbm_importance$variable <- rownames(gbm_importance)
 
 #combine
-svm_importance <- svm_importance[svm_importance$used==1,]
+#svm_importance <- svm_importance[svm_importance$used==1,]
 m <- match(svm_importance$variable ,gbm_importance$variable)
 svm_importance$gbm_importance <- NA
 svm_importance$gbm_importance <- gbm_importance$Overall[m]
@@ -225,17 +237,133 @@ svm_importance$color[svm_importance$variable %in% c("SVM model probability score
 svm_importance$color[svm_importance$variable %in% c("AG distance 1", "AG distance 2","AG distance 5")] <- "3"
 svm_importance$color[svm_importance$variable %in% c("3'exon distance", "5'exon distance")] <- "4"
 
-Figure1D = ggplot(svm_importance, aes(x=Overall, y=gbm_importance, 
+Figure1B = ggplot(svm_importance, aes(x=Overall, y=gbm_importance, 
                                       label=variable,color=color)) + 
   geom_point() + 
   geom_text(hjust=0,vjust=1, size=2) +
   scale_y_log10(name="GBM variable importance") + 
-  theme_bw() + 
   scale_color_manual(values=c(nt_cols, "grey60")) +
   scale_x_continuous(name="SVM variable importance") + 
-  theme(text=element_text(size=10), legend.position="none")
+  theme_figure +theme(legend.position="none")  + ggtitle(label="Variable Importance")
 
-rm(gbm_importance)
+#### motif nucleotide importance
+
+keep <- grepl("BP:", svm_importance$variable) | grepl("nt ", svm_importance$variable)
+U2_df <- svm_importance[keep,]
+U2_df$pos <- stringr::str_sub(U2_df$variable, 4,5)
+U2_df$pos[grep("BP", U2_df$variable)] <- 0
+U2_df$nt <- stringr::str_sub(U2_df$variable, -1,-1)
+U2_df$gbm_importance[is.na(U2_df$gbm_importance)] <- 0
+
+nts <- c("A","T","C","G")
+for(i in c(-5:5)){
+  
+  for(j in nts){
+    w <- which(U2_df$pos == i & U2_df$nt == j)
+    if(length(w) == 0){
+      line <- U2_df[1,]
+      line[,c(1,2,3,4)] <- 0
+      line[,c(6,7)] <- c(i,j)
+      U2_df <- rbind(U2_df, line)
+    }
+  }
+  
+}
+
+U2_df$varImp_mean <- apply(U2_df[,c(1,4)],1,mean)
+U2_df$pos <- as.numeric(U2_df$pos)
+
+Figure2A <- ggplot(U2_df[abs(U2_df$pos) < 4,], aes(x=pos, y=varImp_mean, fill=nt)) + 
+  geom_bar(stat="identity", position="dodge") +
+  scale_x_continuous(name="Distance to Branchpoint", breaks = seq(-3,3,1)) + 
+  scale_y_continuous(name="Mean Model Importance") + 
+  scale_fill_manual(values=c(nt_cols)) + 
+  theme_figure + theme(legend.position = "none")
+
+#### Variable importance by removal
+
+load("data/removeSet_vars.Rdata")
+load("data/remove1_vars.Rdata")
+
+# performance metrics for each variable (/set) left out
+boost_models <- t(data.frame(c(c_boost$overall, c_boost$byClass)))
+for(i in 1:length(model2c_list)){
+  boost_models <- rbind(boost_models,  t(data.frame(c(model2c_list[[i]]$overall, model2c_list[[i]]$byClass))))
+}
+for(i in 1:length(modelr2c_list)){
+  boost_models <- rbind(boost_models,  t(data.frame(c(modelr2c_list[[i]]$overall, modelr2c_list[[i]]$byClass))))
+}
+
+boost_models <- as.data.frame(boost_models)
+colnames(boost_models) <- names(c(c_svm$overall, c_svm$byClass))
+rownames(boost_models) <- c("None", removeVars, li$name)
+
+#difference from model with all variables
+boost_models_diffs <- boost_models[-1,]
+boost_models_diffs <- boost_models_diffs -boost_models[rep(1, nrow(boost_models_diffs)),]  
+
+boost_models_diffs$grouped <- c(rep("no", length(removeVars)), rep("yes", length(li$name)))
+boost_models_diffs$variable <- rownames(boost_models)[-1]
+#remove single nt features -- shhould have no sig effect as can be imputed by values of other 3 nts
+rm <- (str_sub(boost_models_diffs$variable, -1,-1) %in% c("A","T","C","G"))
+boost_models_diffs <- boost_models_diffs[!rm,]
+
+#rename vars
+boost_models_diffs$variable <- gsub("seq_pos0", "BP nt",boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("seq_pos", "nt +",boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("seq_neg", "nt -",boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("dist.1", 
+                                 "5'exon distance",boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("dist.2", 
+                                 "3'exon distance",boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("canon_hit", 
+                                 "AG distance ",boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("newFeat", 
+                                 "SVM model probability score",
+                                 boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("ppt_start", 
+                                 "PPT distance",
+                                 boost_models_diffs$variable)
+boost_models_diffs$variable <- gsub("ppt_run_length", 
+                                 "PPT length",
+                                 boost_models_diffs$variable)
+boost_models_diffs$variable[boost_models_diffs$variable == "dist+ppt"] <- 
+  "PPT + exon distance variables"
+boost_models_diffs$variable[boost_models_diffs$variable == "distance"] <- 
+  "exon distance variables"
+boost_models_diffs$variable[boost_models_diffs$variable == "distance"] <- 
+  "exon distance variables"
+boost_models_diffs$variable[boost_models_diffs$variable == "canon"] <- 
+  "AG distance variables"
+boost_models_diffs$variable[boost_models_diffs$variable == "ppt"] <- 
+  "PPT variables"
+
+# Order by accuracy for plotting
+boost_models_diffs$order[order(boost_models_diffs$Accuracy)] <- 1:nrow(boost_models_diffs)
+FigureS3A <- ggplot(boost_models_diffs, aes(x=factor(order), y=Accuracy, fill=grouped)) + geom_bar(stat="identity") +
+  scale_x_discrete(name="Variable removed", 
+                   labels=boost_models_diffs$variable[order(boost_models_diffs$Accuracy)]) + 
+  scale_y_continuous(name="Change in Accuracy") + 
+  scale_fill_manual(name="Variables\ngrouped", values=c("gray40", "gray60")) + 
+  theme_figure + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Order by F1 for plotting
+boost_models_diffs$order[order(boost_models_diffs$F1)] <- 1:nrow(boost_models_diffs)
+FigureS3B <- ggplot(boost_models_diffs, aes(x=factor(order), y=F1, fill=grouped)) + geom_bar(stat="identity") +
+  scale_x_discrete(name="Variable removed", 
+                   labels=boost_models_diffs$variable[order(boost_models_diffs$F1)]) + 
+  scale_y_continuous(name="Change in F1") + 
+  scale_fill_manual(name="Variables\ngrouped", values=c("gray40", "gray60")) +
+  theme_figure + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+FigureS3 <- ggdraw() + 
+  draw_plot(FigureS3A, 0.0,0.0, 1.0,0.5) + 
+  draw_plot(FigureS3B, 0.0,0.5, 1.0,0.5) + 
+  draw_plot_label(c("A","B"), c(0,0), c(1,0.5), size=18)
+
+pdf("Figures/FigureS3.pdf", height=6,width=6.69, useDingbats = FALSE)
+FigureS3
+dev.off()
 
 ###### get sequences to send to SVM-BP ######
 
@@ -587,76 +715,53 @@ pr_curves$method <- gsub("SVM_BP", "SVM-BPFinder",pr_curves$method )
 pr_curves$method <- gsub("HSF_BP", "HSF",pr_curves$method )
 pr_curves$method[pr_curves$method == "BP"] <- "branchpointer"
 
-#Figure1E and S2
 #ROC curves
-Figure1E=ggplot(roc_curves, aes(x = FPR,y = TPR, col = method)) + 
+Figure1C=ggplot(roc_curves, aes(x = FPR,y = TPR, col = method)) + 
   geom_line() + 
-  theme_bw() + 
-  theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches"), 
-        legend.position=c(0.6,0.3)) + 
-  scale_color_manual(values=nt_cols)
-
-FigureS2=ggplot(pr_curves, aes(x = X1,y = X2, col = method)) + 
+  scale_color_manual(values=nt_cols) + theme_figure + 
+  theme(legend.position = c(0.25,0.25))  + ggtitle(label="ROC Curve")
+#PR curves
+Figure1D=ggplot(pr_curves, aes(x = X1,y = X2, col = method)) + 
   geom_line() + 
-  theme_bw() + 
-  theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches")) + 
   scale_color_manual(values=nt_cols) +  
-  labs(x="Recall",y="Precision")
+  labs(x="Recall",y="Precision") +
+  theme_figure + theme(legend.position = "none") + ggtitle(label="Precision Recall")
+
+Figure1 = ggdraw() + 
+  draw_plot(Figure1B, 0.5,0.5,0.5,0.5) + 
+  draw_plot(Figure1C, 0,0,0.33,0.5) + 
+  draw_plot(Figure1D, 0.33,0,0.33,0.5) + 
+  draw_plot(Figure1E, 0.66,0,0.34,0.5) + 
+  draw_plot_label(c("A","B","C","D","E"), c(0,0.5,0,0.33,0.66), c(1,1,0.5,0.5,0.5), size=18)
+
+pdf("Figures/Figure1.pdf", useDingbats = F, height=5.5, width=6.69)
+Figure1
+dev.off()
+
 
 
 ###### Make Figure pdfs ######
 
-Figure1 = ggdraw() + 
-  draw_plot(Figure1D, 0,0,0.45,0.5) + 
-  draw_plot(Figure1E, 0.45,0,0.3,0.5) + 
-  draw_plot(Figure1F,0.75,0,0.25,0.5) +
-  draw_plot_label(c("D","E","F"), c(0,0.45,0.75), c(0.5,0.5,0.5), size=18)
-
-FigureS1 = ggdraw() + draw_plot(SuppFigure_1A, 0,0.5,0.5,0.5) + 
-  draw_plot(SuppFigure_1B, 0.5,0.5,0.5,0.5) + 
-  draw_plot(SuppFigure_1C, 0,0,0.5,0.5) + 
-  draw_plot(SuppFigure_1D, 0.5,0,0.5,0.5) + 
-  draw_plot_label(c("A","B","C","D"), c(0,0.5,0,0.5), c(1,1,0.5,0.5), size=18)
-
-pdf("Figures/Figure1.pdf", useDingbats = F, height=4.5, width=6.69)
-Figure1
-dev.off()
-
-pdf("Figures/FigureS1.pdf", useDingbats = F, height=6.69, width=6.69)
-FigureS1
-dev.off()
-
-pdf("Figures/FigureS2.pdf", 3.35,2.2,useDingbats = F)
-FigureS2
-dev.off()
 
 test_dataset$short_motif <- factor(with(test_dataset, paste0(seq_neg2, "N", seq_pos0)), levels=c(
 "ANA","CNA","GNA","TNA","ANC","CNC","GNC","TNC", "ANG","CNG","GNG","TNG", "ANT","CNT","GNT","TNT"))
 
-Figure_S3 <- ggplot(test_dataset[test_dataset$HC >= 0.5,], aes(x=HC, fill = short_motif)) + 
+Figure2B <- ggplot(test_dataset[test_dataset$HC >= 0.5,], aes(x=HC, fill = short_motif)) + 
   geom_histogram(bins=50) +
-  theme_bw() + 
-  theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches")) + 
   guides(fill = guide_legend(ncol = 4)) +
   scale_fill_manual(values = c("#00441b","#238b45","#74c476","#c7e9c0",
                                "#08306b","#2171b5",'#6baed6',"#c6dbef",
                                "#7f2704","#d94801",'#fd8d3c',"#fdd0a2",
                                "#67000d","#cb181d","#fb6a4a","#fcbba1"), drop=FALSE, name="motif")+
-  scale_x_continuous(name="branchpointer probability score")
-  
+  scale_x_continuous(name="branchpointer probability score") +
+  theme_figure + theme(legend.position = c(0.2,0.85))
 
-g_legend<-function(a.gplot){
-  tmp <- ggplot_gtable(ggplot_build(a.gplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)}
+Figure2_top = ggdraw() + 
+  draw_plot(Figure2A, 0,0,0.4,1) + 
+  draw_plot(Figure2B, 0.4,0,0.6,1) + 
+  draw_plot_label(c("A","B"), c(0,0.4), c(1,1), size=18)
 
-legend_FigureS3=g_legend(Figure_S3)
-
-FigureS3=ggdraw() + draw_plot(Figure_S3 + theme(legend.position="none"), 0,0,0.7,1) + 
-  draw_grob(legend_FigureS3,0.7,0,0.3,1)
-
-pdf("Figures/FigureS3.pdf", 6.69,4,useDingbats = F)
-FigureS3
+pdf("Figures/Figure2_top.pdf", useDingbats = F, height=2.7, width=6.69)
+Figure2_top
 dev.off()
 

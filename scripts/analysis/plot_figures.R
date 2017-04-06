@@ -13,6 +13,15 @@ library(pheatmap)
 library(data.table)
 source("scripts/analysis/genome_wide_predictions/quick_wilcox.R")
 
+theme_figure <- theme_bw()+ theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches"),
+                                  panel.grid.major = element_blank(),
+                                  panel.grid.minor = element_blank(),
+                                  panel.border = element_blank(),
+                                  axis.line.x = element_line(), 
+                                  axis.line.y = element_line(), 
+                                  panel.background = element_rect(colour = "black", size=1, fill=NA),
+                                  plot.title = element_text(hjust = 0.5))
+
 number_introns_pal=rev(c('#ffffb2','#fecc5c','#fd8d3c','#f03b20','#bd0026'))
 nt_cols=c("#359646","#4D7ABE","#FAA859","#CB3634")
 BP_multi_colors=c("#bababa", "#1a9850", "#a6d96a", "#ffffbf","#fdae61")
@@ -46,56 +55,163 @@ Mercer_branchpoints_lc$set <- "LC"
 
 Mercer_branchpoints <- rbind(Mercer_branchpoints_hc,Mercer_branchpoints_lc)
 
-Figure1A=ggplot(Mercer_branchpoints, aes(x=dist.2*-1, fill=set)) + 
-    geom_bar() + 
-    theme_bw() + 
-    scale_fill_manual(values=nt_cols[c(4,3)] , name=element_blank(), 
-                      labels=c("High confidence\nMercer branchpoints",
-                               "Low confidence\nMercer branchpoints")) + 
-    scale_x_continuous(limits=c(-100,0), 
-                       labels=c("100","75","50","25","0"), 
-                       name="Distance to 3' exon") +
-    geom_vline(xintercept = quantile(Mercer_branchpoints_hc$dist.2, c(0.05,.95))*-1, 
-               color="grey",linetype = "dashed") +
-    theme(text=element_text(size=6),legend.key.size=unit(0.2, "inches"),
-          legend.position=c(0.25,0.8), panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),panel.border = element_blank(), 
-          axis.line.x = element_line(), axis.line.y = element_line())
-
-
-Figure1 = ggdraw() + 
-    draw_plot(Figure1A, 0,0.7,0.45,0.3) + 
-    draw_plot_label(c("A","B","C"), c(0,0.45,0), c(1,1,0.75), size=18)
-
-pdf("Figures/Figure1_part1.pdf", useDingbats = F, height=4.5, width=6.69)
-Figure1
-dev.off()
-
-rm(Mercer_branchpoints_hc,Mercer_branchpoints_hc_chrom,
-   Mercer_branchpoints_lc,Mercer_branchpoints_lc_chrom)
-
 load("data/Figure_files.Rdata")
 
-###### Figure 2A&B - Branchpoint motifs ######
+Mercer_branchpoints_pluspred <- Mercer_branchpoints[,c("dist.2","set")]
+G24_BPs <- G24_all[G24_all$branchpoint_prob >= 0.5 & G24_all$in_testtrain == 0, c("to_3prime", "in_testtrain")]
+G24_BPs$in_testtrain <- "pred"
+colnames(G24_BPs) <- colnames(Mercer_branchpoints_pluspred)
+Mercer_branchpoints_pluspred <- rbind(Mercer_branchpoints_pluspred, G24_BPs)
+Mercer_branchpoints_pluspred$set <- factor(Mercer_branchpoints_pluspred$set, levels=c("pred","LC","HC"))
 
-Figure2A=ggplot(fivemer_summary, aes(x=percent_BP, y=median_branchpoint_prob, size=num_BP, col=BP_nt)) + 
-  geom_point() +scale_color_manual(values = nt_cols, name="BP nucleotide")+theme_bw()  +
-  scale_x_continuous(name="Relative motif frequency\n(BPs/Negatives)") + scale_y_continuous(name="Median branchpointer\nprobability score") + 
-  theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches")) + scale_size_continuous(name="Number of BPs\nin training dataset", range=c(0.5,3))
+Figure3A <- ggplot(Mercer_branchpoints_pluspred[Mercer_branchpoints_pluspred$set != "LC",], 
+                   aes(x=dist.2*-1, fill=set)) + 
+  geom_vline(xintercept = quantile(Mercer_branchpoints_hc$dist.2, c(0.05,.95))*-1, 
+             color="grey",linetype = "dashed") +
+  geom_bar() + 
+  scale_fill_manual(values=nt_cols[c(2,4)] , name=element_blank(), 
+                    labels=c("Predicted",
+                             "Mercer et al.")) + 
+  scale_x_continuous(limits=c(-100,0), 
+                     labels=c("100","75","50","25","0"), 
+                     name="Distance to 3' exon") +
+  theme_figure + 
+  theme(legend.position=c(0.25,0.8))
 
-Figure2B=ggplot(fivemer_summary, aes(y=median_branchpoint_prob, x=mean_U2,size=num_BP, col=BP_nt)) + geom_point() +
-  scale_color_manual(values = nt_cols, name="BP nucleotide")+theme_bw()+
-  scale_y_continuous(name="Median branchpointer\nprobability score") + 
-  scale_x_continuous(name="Branchpoint strength\n(Mean U2 binding energy)") +
-  theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches"))+ scale_size_continuous(name="Number of BPs\nin training dataset", range=c(0.5,3))
+###### Figure 2C&D - Branchpoint motifs ######
 
-g_legend<-function(a.gplot){
-  tmp <- ggplot_gtable(ggplot_build(a.gplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)}
+Figure2C=ggplot(fivemer_summary, aes(x=percent_BP, y=median_branchpoint_prob, size=num_BP, col=BP_nt)) + 
+  geom_point() +scale_color_manual(values = nt_cols, name="BP nt")+
+  scale_x_continuous(name="Relative motif frequency\n(BP/Negative)") + 
+  scale_y_continuous(name="Median BP Probability Score") + 
+  theme_figure +
+  scale_size_continuous(name="BP count", range=c(0.5,3))
 
-legend_Figure2=g_legend(Figure2A)
+Figure2D=ggplot(fivemer_summary, aes(y=median_branchpoint_prob, x=mean_U2,size=num_BP, col=BP_nt)) + geom_point() +
+  scale_color_manual(values = nt_cols, name="BP nt")+
+  scale_y_continuous(name="Median BP Probability Score") + 
+  scale_x_continuous(name="Mean U2 binding energy") +
+  theme_figure +
+  scale_size_continuous(name="BP count", range=c(0.5,3))
+
+Figure2_bot = ggdraw() + 
+  draw_plot(Figure2C, 0,0,0.6,1) + 
+  draw_plot(Figure2D + theme(legend.position = "none"), 0.6,0,0.4,1) + 
+  draw_plot_label(c("C","D"), c(0,0.6), c(1,1), size=18)
+
+pdf("Figures/Figure2_bot.pdf", useDingbats = F, height=2.7, width=6.69)
+Figure2_bot
+dev.off()
+
+
+branchpoints_introns$gene_biotype_broad2 <- branchpoints_introns$gene_biotype_broad
+branchpoints_introns$gene_biotype_broad2[grep("unprocessed_pseudogene", branchpoints_introns$gene_biotype)] <- "unprocessed_pseudogene"
+branchpoints_introns$gene_biotype_broad2[grepl("processed_pseudogene", branchpoints_introns$gene_biotype) & 
+                                           branchpoints_introns$gene_biotype_broad2 !="unprocessed_pseudogene"] <- "processed_pseudogene"
+
+number_bp_by_gene_type=as.data.frame(table(branchpoints_introns$gene_biotype_broad2, branchpoints_introns$predicted_BPs_factor)/rowSums(table(branchpoints_introns$gene_biotype_broad2, branchpoints_introns$predicted_BPs_factor)))
+
+Figure3C <- ggplot(number_bp_by_gene_type[number_bp_by_gene_type$Var1 %in% names(which(table(branchpoints_introns$gene_biotype_broad2) > 2000)),], 
+                   aes(x=Var1, y=Freq, fill=Var2)) + 
+  scale_fill_manual(values = BP_multi_colors, name="Branchpoint\ncount") + 
+  geom_bar(stat="identity") + theme_figure +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.position = "none") +
+  scale_x_discrete(name="Gene Biotype") + 
+  scale_y_continuous(name="Fraction of Total Introns") + ggtitle(label = "Branchpoint Count")
+
+##### Conservation
+files <- list.files("data/conservation", pattern="conservation_df_", full.names = TRUE)
+
+for(f in seq_along(files)){
+  
+  conservation_df_orginal <- fread(files[f], data.table = FALSE)
+  
+  if(exists("conservation_df_orginal_all")){
+    conservation_df_orginal_all <- rbind(conservation_df_orginal_all,conservation_df_orginal)
+  }else{
+    conservation_df_orginal_all <- conservation_df_orginal
+  }
+}
+
+conservation_df <- conservation_df_orginal_all
+m <- match(conservation_df$id, branchpoints_introns$introns)
+conservation_df$status <- branchpoints_introns$status[m]
+conservation_df$annotated_BPs <- branchpoints_introns$annotated_BPs_factor[m]
+conservation_df$gene_biotype_broad <- branchpoints_introns$gene_biotype_broad[m]
+
+melted <- melt(conservation_df[,c(1:12,20:22)], id.vars=c("id","status","annotated_BPs","gene_biotype_broad"))
+melted$variable <- gsub("cons_neg", "-", melted$variable)
+melted$variable <- gsub("cons_pos", "", melted$variable)
+melted$variable <- as.numeric(melted$variable)
+
+conservation_summary <- rbind(
+  cbind(set="known",multiplicity="single_BP",
+        as.data.frame(aggregate(value ~ variable, 
+                                data=melted[melted$annotated_BPs == 1 & 
+                                              melted$gene_biotype_broad=="protein_coding" &
+                                              melted$status == "test/train",], median))),
+  cbind(set="predicted",multiplicity="single_BP",
+        as.data.frame(aggregate(value ~ variable, 
+                                data=melted[melted$annotated_BPs == 1 & 
+                                              melted$gene_biotype_broad=="protein_coding" & 
+                                              melted$status == "predicted",], median))),
+  cbind(set="known",multiplicity="multi_BP",
+        as.data.frame(aggregate(value ~ variable, 
+                                data=melted[melted$annotated_BPs == "2+" & 
+                                              melted$gene_biotype_broad=="protein_coding" & 
+                                              melted$status == "test/train",], median))),
+  cbind(set="predicted",multiplicity="multi_BP",
+        as.data.frame(aggregate(value ~ variable, 
+                                data=melted[melted$annotated_BPs == "2+" & 
+                                              melted$gene_biotype_broad=="protein_coding" & 
+                                              melted$status == "predicted",], median))))
+
+conservation_summary$se_lower <- rbind(as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == 1 & 
+                                                                               melted$gene_biotype_broad=="protein_coding" &
+                                                                               melted$status == "test/train",], function(x) (median(x) - sd(x)/sqrt(length(x))))),
+                                         as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == 1 & 
+                                                                               melted$gene_biotype_broad=="protein_coding" & 
+                                                                               melted$status == "predicted",], function(x) (median(x) - sd(x)/sqrt(length(x))))),
+                                         as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == "2+" & 
+                                                                               melted$gene_biotype_broad=="protein_coding" & 
+                                                                               melted$status == "test/train",], function(x) (median(x) - sd(x)/sqrt(length(x))))),
+                                         as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == "2+" & 
+                                                                               melted$gene_biotype_broad=="protein_coding" & 
+                                                                               melted$status == "predicted",], function(x) (median(x) - sd(x)/sqrt(length(x))))))[,2]
+conservation_summary$se_upper <- rbind(as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == 1 & 
+                                                                               melted$gene_biotype_broad=="protein_coding" &
+                                                                               melted$status == "test/train",], function(x) (median(x) + sd(x)/sqrt(length(x))))),
+                                         as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == 1 & 
+                                                                               melted$gene_biotype_broad=="protein_coding" & 
+                                                                               melted$status == "predicted",], function(x) (median(x) + sd(x)/sqrt(length(x))))),
+                                         as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == "2+" & 
+                                                                               melted$gene_biotype_broad=="protein_coding" & 
+                                                                               melted$status == "test/train",], function(x) (median(x) + sd(x)/sqrt(length(x))))),
+                                         as.data.frame(aggregate(value ~ variable, 
+                                                                 data=melted[melted$annotated_BPs == "2+" & 
+                                                                               melted$gene_biotype_broad=="protein_coding" & 
+                                                                               melted$status == "predicted",], function(x) (median(x) + sd(x)/sqrt(length(x))))))[,2]
+
+conservation_summary$multiplicity <- factor(conservation_summary$multiplicity, levels=c("single_BP","multi_BP"))
+Figure3D = ggplot(conservation_summary, 
+       aes(x=as.factor(variable), col=set, group=set, y=value, ymin=se_lower, ymax=se_upper)) + 
+  geom_point() + geom_line() +
+  geom_errorbar(width=0.25) +
+  facet_wrap(~multiplicity) +
+  scale_color_manual(values=nt_cols[c(4,2)] , name=element_blank(), 
+                    labels=c("Mercer et al.","Predicted")) +
+  theme_figure + theme(legend.position = c(0.8, 0.7),strip.text.x = element_blank()) + 
+  scale_y_continuous(name="phyloP conservation") + 
+  scale_x_discrete(name="Distance to Branchpoint") + 
+  ggtitle("Single BP Multi BP")
 
 ###### Figure 2C&D - Prediction of splicing branchpoints in GENCODE introns ######
 
@@ -105,45 +221,49 @@ branchpoints_introns$bps[branchpoints_introns$status == 'test/train'] <-
   branchpoints_introns$known_BPs[branchpoints_introns$status == 'test/train']
 branchpoints_introns$bps[branchpoints_introns$bps >= 4] ="4+"
 
-Figure2C=ggplot(branchpoints_introns, aes(fill=factor(bps), x=status)) + 
+FigureS4=ggplot(branchpoints_introns, aes(fill=factor(bps), x=status)) + 
   geom_bar(color="black") + 
   scale_fill_manual(values = BP_multi_colors, name="Branchpoint\ncount") + 
-  theme_bw() + 
-  theme(legend.position = c(0.8,0.7),text=element_text(size=10),legend.key.size=unit(0.2, "inches")) + 
-  scale_y_continuous(name="introns") +
-  scale_x_discrete(labels=c("predicted","known","unknown"), name="Branchpoint status\nx")
+  theme_figure +
+  theme(legend.position = c(0.8,0.7)) + 
+  scale_y_continuous(name="Introns") +
+  scale_x_discrete(labels=c("Predicted","Mercer et al.","No Annotation"), name=element_blank())
 
-Figure2D=ggplot(branchpoints_introns[branchpoints_introns$status!="unknown",], aes(x=dex_mean_log, fill=status)) + 
-  geom_density(alpha=0.5) +
-  scale_fill_brewer(palette = "Paired", name="Branchpoint\nstatus") + 
-  theme_bw() + 
-  theme(legend.position = c(0.8,0.8),text=element_text(size=10),legend.key.size=unit(0.2, "inches")) + 
-  scale_x_continuous(name="Exon expression\nlog10(exon normalised counts + 0.1)")
-
-Figure2=
-    ggdraw() + draw_plot(Figure2A + theme(legend.position="none"), 0,0.5,0.4,.5) + 
-    draw_plot(Figure2B+ theme(legend.position="none"), 0.6,0.5,0.4,.5) + 
-    draw_grob(legend_Figure2,0.4,0.5,0.2,.5)+
-    draw_plot(Figure2C, 0,0,0.5,0.5) + 
-    draw_plot(Figure2D, 0.5,0,0.5,0.5) + 
-    draw_plot_label(c("A","B","C","D"), c(0,0.6,0,0.5), c(1,1,.5,.5), size=18)
-
-pdf("Figures/Figure2.pdf", useDingbats = F, height=5.5, width=6.69)
-Figure2
+pdf("Figures/FigureS4.pdf", width=3.31, height=3.3)
+FigureS4
 dev.off()
 
-####### Figure 2 Supplement #######
-#Figure2C by gene biotype
-FigureS4=ggplot(branchpoints_introns, aes(fill=factor(bps), x=status)) + 
+Figure3B=ggplot(branchpoints_introns[branchpoints_introns$status!="unknown",], 
+                aes(x=dex_mean_log, fill=status)) + 
+  geom_density(alpha=0.5) +
+  theme_figure +
+  scale_fill_manual(values=nt_cols[c(2,4)] , name=element_blank(), 
+                    labels=c("Predicted",
+                             "Mercer et al.")) + 
+  theme(legend.position = c(0.8,0.8)) + 
+  scale_x_continuous(name="Exon expression (log10)")
+
+Figure3=
+    ggdraw() + 
+    draw_plot(Figure3A, 0,0.5,0.6,.5) + 
+    draw_plot(Figure3B, 0.6,0.5,0.4,.5) + 
+    draw_plot(Figure3C, 0,0,0.33,0.5) + 
+    draw_plot(Figure3D, 0.33,0,0.64,0.5) + 
+    draw_plot_label(c("A","B","C","D"), c(0,0.6,0,0.33), c(1,1,.5,.5), size=18)
+
+pdf("Figures/Figure3.pdf", useDingbats = F, height=5, width=6.69)
+Figure3
+dev.off()
+
+FigureS7=ggplot(branchpoints_introns[branchpoints_introns$gene_biotype_broad != "other",], aes(fill=factor(bps), x=status)) + 
   geom_bar(color="black") + 
   facet_wrap(~gene_biotype_broad, scales = "free")+ 
   scale_fill_manual(values = BP_multi_colors, name="Branchpoint\ncount") +
-  theme_bw() +
-  theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches")) +
-  scale_x_discrete(drop=FALSE,labels=c("predicted","known","unknown"))
+  theme_figure + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  scale_x_discrete(drop=FALSE,labels=c("Predicted","Mercer et al.","No Annotation"), name=element_blank())
 
-pdf("Figures/FigureS4.pdf", 6.69,6,useDingbats = F)
-FigureS4
+pdf("Figures/FigureS7.pdf", 6.69,3,useDingbats = F)
+FigureS7
 dev.off()
 
 
@@ -174,36 +294,97 @@ FigureS7A=ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",]
   theme_bw() + 
   theme(legend.position = "none",text=element_text(size=10))+ scale_x_discrete(name="Annotated branchpoints")
 
-FigureS7B=ggplot(branchpoints_introns[branchpoints_introns$gene_biotype =="protein_coding" & 
-                                       branchpoints_introns$status=="predicted",], 
-                       aes(y=dex_mean_log, fill=factor(predicted_BPs_factor), x=predicted_BPs_factor)) + 
-  scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
-  theme_bw()+ 
-  geom_violin(scale="width", lwd=0.25) + 
-  geom_boxplot(alpha=0, width=0.5, outlier.size = 0.25, lwd=0.25) + 
-  scale_x_discrete(name="Annotated branchpoints") + 
-  scale_y_continuous(name="log10 exon expression") + 
-  theme(legend.position = "none",text=element_text(size=10)) 
+Figure4A=ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",], 
+       aes(x=intron_size, col=factor(predicted_BPs_factor))) + 
+  stat_ecdf(geom="step") +
+  scale_x_log10(name="Intron size (nt)", limits=c(50, 500000))+ 
+  scale_color_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  theme_figure + 
+  theme(legend.position = "none") +
+  scale_y_continuous(name="Cumulative Fraction") + ggtitle("Shorter Introns")
 
-FigureS7C=ggplot(branchpoints_introns[which(branchpoints_introns$status=="predicted" & !is.na(branchpoints_introns$cons_intron_mean)),], 
-  aes(y=cons_intron_mean, fill=factor(predicted_BPs_factor), x=predicted_BPs_factor)) + 
-  geom_violin(scale="width", lwd=0.25) + 
-  geom_boxplot(alpha=0, width=0.5, outlier.size = 0.25, lwd=0.25) +
+summary <- Rmisc::summarySE(branchpoints_introns[branchpoints_introns$status=="predicted",], 
+                            measurevar="intron_size", 
+                            groupvars=c("predicted_BPs_factor"))
+
+summary$median <- aggregate(intron_size ~ predicted_BPs_factor, branchpoints_introns[branchpoints_introns$status=="predicted",], median)[,2]
+
+Figure4A_subset=ggplot(summary, aes(x=predicted_BPs_factor, y=median,fill=predicted_BPs_factor)) +
+  geom_bar(stat="identity") + geom_errorbar(aes(ymin=median-se, ymax=median+se), width=0.2) +
   scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
-  theme_bw() +
-  scale_x_discrete(name="Annotated branchpoints") + 
-  scale_y_continuous(name="mean intron conservation") +
-  theme(legend.position = "none",text=element_text(size=10))
+  theme_figure +
+  scale_y_continuous(name="Intron size") + 
+  scale_x_discrete(name="BP per intron") + 
+  theme(legend.position = "none")
+
+Figure4A_all <- ggdraw() + draw_plot(Figure4A, 0,0,1,1) + 
+  draw_plot(Figure4A_subset, 0.5,0.1,0.45,.7)
+
+FigureS7A=ggplot(branchpoints_introns[branchpoints_introns$gene_biotype =="protein_coding" & 
+                                      branchpoints_introns$status=="predicted",], 
+               aes(x=dex_mean_log, col=factor(predicted_BPs_factor))) + 
+  stat_ecdf(geom="step") +
+  scale_x_continuous(name="Exon Expression (log10)")+ 
+  scale_color_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  theme_figure +
+  theme(legend.position = "none") +
+  scale_y_continuous(name="Cumulative Fraction") + ggtitle("Higher Expression")
+
+summary <- Rmisc::summarySE(branchpoints_introns[branchpoints_introns$gene_biotype =="protein_coding" & 
+                                                   branchpoints_introns$status=="predicted",], 
+                            measurevar="dex_mean_log", 
+                            groupvars=c("predicted_BPs_factor"))
+
+summary$median <- aggregate(dex_mean_log ~ predicted_BPs_factor, branchpoints_introns[branchpoints_introns$gene_biotype =="protein_coding" & 
+                                                                                       branchpoints_introns$status=="predicted",], median)[,2]
+
+FigureS7A_subset = ggplot(summary, aes(x=predicted_BPs_factor, y=median,fill=predicted_BPs_factor)) +
+  geom_bar(stat="identity", color="black") + geom_errorbar(aes(ymin=median-se, ymax=median+se), width=0.2) +
+  scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  theme_figure +
+  scale_y_continuous(name="Exon Expression (log10)") + 
+  scale_x_discrete(name="BP per intron") + 
+  theme(legend.position = "none")
+
+FigureS7B=ggplot(branchpoints_introns[which(branchpoints_introns$status=="predicted" & !
+                                            is.na(branchpoints_introns$cons_intron_mean)),], 
+               aes(x=cons_intron_mean, col=factor(predicted_BPs_factor))) + 
+  stat_ecdf(geom="step") +
+  scale_x_continuous(name="Mean Intron Conservation")+ 
+  scale_color_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  theme_figure + 
+  theme(legend.position = "none") +
+  scale_y_continuous(name="Cumulative Fraction") + ggtitle("Higher Conservation")
+
+summary <- Rmisc::summarySE(branchpoints_introns[which(branchpoints_introns$status=="predicted" & 
+                                                         !is.na(branchpoints_introns$cons_intron_mean)),], 
+                            measurevar="cons_intron_mean", 
+                            groupvars=c("predicted_BPs_factor"))
+
+summary$median <- aggregate(cons_intron_mean ~ predicted_BPs_factor, branchpoints_introns[which(branchpoints_introns$status=="predicted" & 
+                                                                                              !is.na(branchpoints_introns$cons_intron_mean)),], median)[,2]
+
+FigureS7B_subset =ggplot(summary, aes(x=predicted_BPs_factor, y=median,fill=predicted_BPs_factor)) +
+  geom_bar(stat="identity", color="black") + geom_errorbar(aes(ymin=median-se, ymax=median+se), width=0.2) +
+  scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  theme_figure + 
+  scale_y_continuous(name="Mean Intron Conservation") + 
+  scale_x_discrete(name="BP per intron") + 
+  theme(legend.position = "none")
+
+FigureS7A_all <- ggdraw() + draw_plot(FigureS7A, 0,0,1,1) + 
+  draw_plot(FigureS7A_subset, 0.6,0.15,0.35,.6)
+
+FigureS7B_all <- ggdraw() + draw_plot(FigureS7B, 0,0,1,1) + 
+  draw_plot(FigureS7B_subset, 0.6,0.15,0.35,.6)
 
 FigureS7 <- ggdraw() + 
-  draw_plot(FigureS7A, 0.00,0, 0.33,1) + 
-  draw_plot(FigureS7B, 0.33,0, 0.33,1) + 
-  draw_plot(FigureS7C, 0.66,0, 0.33,1) + 
-  draw_plot_label(c("A","B","C"), c(0,0.33,0.66), c(1,1,1), size=18)
-FigureS7
+  draw_plot(FigureS7A_all, 0.00,0, 0.5,1) + 
+  draw_plot(FigureS7B_all, 0.5,0, 0.5,1) + 
+  draw_plot_label(c("A","B"), c(0,0.5), c(1,1), size=18)
 
-pdf("Figures/FigureS7.pdf", height=7,width=6.69, useDingbats = FALSE)
-Figure3
+pdf("Figures/FigureS7.pdf", height=3,width=6.69, useDingbats = FALSE)
+FigureS7
 dev.off()
 
 #no significant difference in multiplicity between gene biotype class
@@ -244,7 +425,7 @@ tbl_pheat <- norm_tabl
 tbl_pheat[,1] <- norm_tabl[,1]/rowSums(norm_tabl)
 tbl_pheat[,2] <- norm_tabl[,2]/rowSums(norm_tabl)
 
-pdf("Figures/Figure3B.pdf", height=2,width=2, useDingbats = FALSE)
+pdf("Figures/Figure4C.pdf", height=2,width=2, useDingbats = FALSE)
 pheatmap(tbl_pheat, cluster_cols = F,cluster_rows = F,annotation_names_row=T, display_numbers = tbl)
 dev.off()
 
@@ -257,15 +438,6 @@ chisq.test(tbl)
 
 wilcox.test((branchpoints_introns$var_maxentscan[branchpoints_introns$predicted_BPs > 1 & branchpoints_introns$gencode_alternative5 > 1]),
             (branchpoints_introns$var_maxentscan[branchpoints_introns$predicted_BPs == 1 & branchpoints_introns$gencode_alternative5 > 1]))
-
-Figure3C=ggplot(branchpoints_introns[branchpoints_introns$gencode_alternative5 > 1 & branchpoints_introns$annotated_BPs_factor!="0",], 
-       aes(x=annotated_BPs_factor, y=var_maxentscan, fill=annotated_BPs_factor)) + 
-    geom_boxplot( outlier.size = 0.25, lwd=0.25) + 
-    scale_y_log10(name="5' splice site\nstrength variation") + 
-    scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
-    theme_bw() +
-    theme(text=element_text(size=10),legend.position="none") + 
-    scale_x_discrete(name="Number of branchpoints in intron") 
 
 #no association between number of alternative 5' exons and spacing of multiple branchpoints
 
@@ -300,27 +472,25 @@ snp_locs$Variant_location_reorder <- factor(snp_locs$Variant_location,levels=c("
                                                                                   "3'SS | 1 ",
                                                                                   "3'SS | 2+"))
 
-Figure3A=ggplot(snp_locs, aes(x=Variant_location_reorder , fill=Var2, y=percent_Freq)) + 
+Figure4B=ggplot(snp_locs, aes(x=Variant_location_reorder , fill=Var2, y=percent_Freq)) + 
     geom_bar(stat="identity",position="dodge") +  
     geom_text(aes(x=Variant_location_reorder , y=percent_Freq + 0.05 * sign(percent_Freq), label=Freq), hjust=0.5, size=2) +
-    theme_bw() +
-    theme(text=element_text(size=10), axis.text.x = element_text(angle = 45, hjust = 1),
-          legend.position="none") + 
+    theme_figure +
+    theme(legend.position="none") + 
     scale_fill_manual(values = BP_multi_colors[c(2,5,4,3)],name="Annotated branchpoints",labels=c("1","2+")) + 
-    scale_x_discrete(name="variant location", labels=rep(c("5'SS to BP", "BP","3'SS to BP","3'SS"), each=2)) + 
-    scale_y_continuous(name="Relative common\nSNP frequency")
+    scale_x_discrete(name="GTEx Variant Location", labels=rep(c("5'SS to BP", "BP","3'SS to BP","3'SS"), each=2)) + 
+    scale_y_continuous(name="Relative Common\nSNP Frequency") + ggtitle("Enrichment of Common Variants at BPs")
 
-Figure3 <- ggdraw() + 
-    draw_plot(Figure3A, 0.00,0.1, 0.6,0.55) + 
-    draw_plot(Figure3C, 0.6,0, 0.4,0.4) + 
-  
-    draw_plot_label(c("A","B","C"), c(0,0.6,0.6), c(1,1,0.4), size=18)
-Figure3
-pdf("Figures/Figure3.pdf", height=5,width=6.69, useDingbats = FALSE)
-Figure3
+Figure4_top <- ggdraw() + 
+    draw_plot(Figure4A_all, 0,0.2, 0.4,0.8) + 
+    draw_plot(Figure4B, 0.4,0, 0.6,1) + 
+    draw_plot_label(c("A","B"), c(0,0.4), c(1,1), size=18)
+
+pdf("Figures/Figure4_top.pdf", height=3,width=6.69, useDingbats = FALSE)
+Figure4_top
 dev.off()
 
-####### Figure 3 Supplement #######
+####### Figure 4 Supplement #######
 
 #Intron size trend present in Mercer annotation
 #non-annotated introns are longer
@@ -331,14 +501,34 @@ Mercer_introns <- as.data.frame(table(Mercer_branchpoints$exon_id.2[Mercer_branc
 Mercer_introns$size <- Mercer_branchpoints$intron_size[match(Mercer_introns$Var1, Mercer_branchpoints$exon_id.2)]
 Mercer_introns$Freq[Mercer_introns$Freq >= 4] <- "4+"
 
-FigureS5=ggplot(Mercer_introns, aes(x=Freq, y=size, group=Freq, fill=Freq)) + 
-    geom_violin(scale="width") + 
-    geom_boxplot(alpha=0.1, width=0.5) +
-    scale_y_log10(name="Intron size (nt)") + 
-    scale_fill_manual(values = BP_multi_colors[-1], name="Annotated branchpoints") + 
-    theme_bw() + 
-    theme(legend.position = "none") + 
-    scale_x_discrete(name="Annotated branchpoints") 
+FigureS6=ggplot(Mercer_introns, aes(x=size, col=Freq)) + 
+    stat_ecdf(geom="step") +
+    scale_x_log10(name="Intron size (nt)") + 
+    scale_color_manual(values = BP_multi_colors[-1], name="Annotated branchpoints") + 
+    theme_figure +
+    theme(legend.position = "none") +
+    scale_y_continuous(name="Cumulative Fraction")
+
+summary <- Rmisc::summarySE(Mercer_introns, 
+                            measurevar="size", 
+                            groupvars=c("Freq"))
+
+summary$median <- aggregate(size ~ Freq, Mercer_introns, median)[,2]
+
+FigureS6_subset=ggplot(summary, aes(x=Freq, y=median,fill=Freq)) +
+  geom_bar(stat="identity") + geom_errorbar(aes(ymin=median-se, ymax=median+se), width=0.2) +
+  scale_fill_manual(values = BP_multi_colors[-1], name="Annotated branchpoints") + 
+  theme_figure +
+  scale_y_continuous(name="Intron size") + 
+  scale_x_discrete(name="BP per intron") + 
+  theme(legend.position = "none")
+
+FigureS6_all <- ggdraw() + draw_plot(FigureS5, 0,0,1,1) + 
+  draw_plot(FigureS6_subset, 0.6,0.15,0.35,.6)
+pdf("Figures/FigureS6.pdf", height=3, width=3.31)
+FigureS6_all
+dev.off()
+
 
 wilcox.test(Mercer_introns$size[Mercer_introns$Freq == 1], 
             Mercer_introns$size[Mercer_introns$Freq == 2])
@@ -348,36 +538,6 @@ wilcox.test(Mercer_introns$size[Mercer_introns$Freq == 2],
 
 wilcox.test(Mercer_introns$size[Mercer_introns$Freq == 3], 
             Mercer_introns$size[Mercer_introns$Freq == "4+"])
-
-
-pdf("Figures/FigureS5.pdf", 3.35,3,useDingbats = F)
-FigureS5
-dev.off()
-
-
-gene_types=as.data.frame(table(branchpoints_introns$gene_biotype))
-keep_gene_types=gene_types$Var1[gene_types$Freq > 1000]
-FigureS6=ggplot(branchpoints_introns[(branchpoints_introns$gene_biotype %in% keep_gene_types & branchpoints_introns$status=="predicted"),], 
-                aes(y=intron_size, fill=factor(annotated_BPs_factor), x=annotated_BPs_factor)) + 
-    geom_violin(scale="width") + 
-    geom_boxplot(alpha=0.1, width=0.5) +
-    scale_y_log10(name="Intron size (nt)") + 
-    scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") +
-    theme_bw() + 
-    theme(legend.position = "none") + 
-    scale_x_discrete(name="Annotated branchpoints") + 
-    facet_wrap(~gene_biotype)
-
-pdf("Figures/FigureS6.pdf", 6.69,6,useDingbats = F)
-FigureS6
-dev.off()
-
-for(type in keep_gene_types){
-  message(type)
-  print(wilcox.test(branchpoints_introns$intron_size[branchpoints_introns$gene_biotype == type & branchpoints_introns$annotated_BPs_factor ==1],
-                    branchpoints_introns$intron_size[branchpoints_introns$gene_biotype == type & branchpoints_introns$annotated_BPs_factor =="2+"]))
-}
-
 
 ####### Supplementary Figure 8 -- exon skipping #######
 load("data/exon_skipping.Rdata")
@@ -424,6 +584,7 @@ chisq.test(tbl)
 #locations of clinVar intronic variants and GTEX variants
 
 load("data/diseaseVariants.Rdata")
+load("data/commonVariants.Rdata")
 
 clinVar_processed$snp_in <- NA
 clinVar_processed$snp_in[clinVar_processed$dist_to_BP <= -1] <- "3'SS to BP"
@@ -433,19 +594,22 @@ clinVar_processed$snp_in[clinVar_processed$dist_to_exon < 3] <- "3'SS"
 
 clinVar_processed$set <- "ClinVar"
 processed_GTEX$set <- "GTEx"
+processed_GTEX$exon_3prime=NULL
 
 snp_locs_all <- rbind(processed_GTEX, clinVar_processed[,match(colnames(processed_GTEX), colnames(clinVar_processed))])
 
-FigureS9=ggplot(snp_locs_all[snp_locs_all$multi_BP!="0" & !is.na(snp_locs_all$snp_in),], 
+Figure5A=ggplot(snp_locs_all[snp_locs_all$multi_BP!="0" & !is.na(snp_locs_all$snp_in),], 
        aes(x=snp_in, fill=multi_BP)) + 
     geom_bar() +  
-    theme_bw() +
-    scale_fill_manual(name="annotated\nbranchpoints",values = BP_multi_colors[c(2,5)]) +
-    theme(text=element_text(size=10),legend.key.size=unit(0.2, "inches")) +
-    facet_wrap(~set, scales="free") +scale_x_discrete(name="variant location", labels=c("3'SS", "3'SS to BP", "BP","5'SS to BP"))
+    theme_figure +
+    theme(strip.text.x = element_blank(),
+          axis.text.x = element_text(angle = 90, hjust = 1)) + ggtitle("ClinVar GTEx") +
+    scale_fill_manual(name="Branchpoints\nper Intron",values = BP_multi_colors[c(2,5)]) +
+    facet_wrap(~set, scales="free") + 
+      scale_x_discrete(name=element_blank(), labels=c("3'SS", "3'SS to BP", "BP","5'SS to BP"))
 
-pdf("Figures/FigureS9.pdf", width=6.69, height=3)
-FigureS9
+pdf("Figures/Figure5A.pdf", width=6.69, height=3)
+Figure5A
 dev.off()
 
 chisq.test(table(clinVar_processed$snp_in[clinVar_processed$multi_BP!=0], clinVar_processed$multi_BP[clinVar_processed$multi_BP!=0]))
@@ -455,6 +619,6 @@ chisq.test(table(processed_GTEX$snp_in[processed_GTEX$multi_BP!=0], processed_GT
 source("scripts/analysis/variation/plotBranchpointWindow_Figure.R")
 
 #FECH branchpoint mutation
-pdf("Figures/Figure4.pdf", width=6.69, height=6)
+pdf("Figures/Figure5_bot.pdf", width=6.69, height=6)
 plotBranchpointWindow_Figure(clinVars_filtered$id[clinVars_filtered$GeneSymbol=="FECH"], clinvar_predictions,clinvar_attributes,exons)
 dev.off()
