@@ -95,7 +95,7 @@ Rscript scripts/model_generation/trainFinalModel.R 42
 Makes:
 `gbm_final_model_42.RData`
 
-**5. Feature removal
+**5. Feature removal**
 Removal of all variables used in the final model one at a time, and in related sets.
 Note that Sequence identity features at the same site (i.e. seq_pos0A/seq_pos0C/seq_pos0G/seq_pos0T) must be removed in groups, as it is possible to still infer sequence identity when only one is removed.
 
@@ -117,7 +117,7 @@ and
 `gbm_models_removeVarSets_i.RData`
 (i = 0:15)
 
-**6. Naive Bayes Model
+**6. Naive Bayes Model**
 Generates a naive bayes model with the same training dataset as the final model
 ```
 Rscript scripts/model_generation/trainNBModel.R 42

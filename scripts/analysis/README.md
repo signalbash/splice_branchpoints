@@ -1,16 +1,23 @@
-evaluate_performance.R
+**1. Evaluate the performance ofthe branchpointer model**
 
-get_cons_locs.R
-	get_bw_entries.py
+`evaluate_performance.R`
 
-annotate_gencode_v26.R
+**2. Get conservation for branchpoints and surrounding regions**
+`get_cons_locs.R`
+calls - `get_bw_entries.py`
 
-combine_GTEx_QTL.R
+**3. Annotate the Gencode v26 predictions with attributes for figures/stats**
+`annotate_gencode_v26.R`
 
-common_variants.R
+**4. Combine GTEX QTL calls into single files**
+`combine_GTEx_QTL.R`
 
-disease_variants.R
+**5. Run branchpointer on GTEx variants and do some filtering**
+`common_variants.R`
 
->>
+**6. Run branchpointer on ClinVar variants and do some filtering**
+`disease_variants.R`
 
-plot_figures.R
+**7. Plot figures for manuscript**
+`plot_figures.R`
+ - calls `quick_wilcox.R`
