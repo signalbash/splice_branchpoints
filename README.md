@@ -3,24 +3,19 @@
 Scripts used in:
 Signal, B., Gloss, B.S., Dinger, M.E., & Mercer, T.E. Machine-Learning annotation of human splicing branchpoints. 2016. 
 
-##branchpointer
-The machine learning model for predicting intronic branchpoints is available as an R package at githib.com/betsig/branchpointer
+## branchpointer
+The machine learning model for predicting intronic branchpoints is available as an R package at github.com/betsig/branchpointer and github.com/betsig/branchpointer_dev (development version)
 
-##Abstract
-Background: The branchpoint element is required for the first lariat-forming reaction in splicing. However due to difficulty in experimentally mapping at a genome-wide scale, current catalogues are incomplete.
+## Abstract
+**Motivation:** The branchpoint element is required for the first lariat-forming reaction in splicing. However current catalogues of human branchpoints remain incomplete due to the difficulty in experimentally identifying these splicing elements. To address this limitation, we have developed a machine-learning algorithm - branchpointer - to identify branchpoint elements solely from gene annotations.
 
-Results: We have developed a machine-learning algorithm trained with empirical human branchpoint annotations to identify branchpoint elements from primary genome sequence alone. Using this approach, we can accurately locate branchpoints elements in 85% of introns in current gene annotations. Consistent with branchpoints as basal genetic elements, we find our annotation is unbiased towards gene type and expression levels. A major fraction of introns was found to encode multiple branchpoints raising the prospect that mutational redundancy is encoded in key genes. We also identify cases of deleterious branchpoint mutations in clinical variant databases that may explain disease pathogenicity. 
+**Results:** Using branchpointer, we annotate branchpoint elements in 85% of human gene introns with best-in-class accuracy (96.26%). In addition to annotation, branchpointer can evaluate the impact of SNPs on branchpoint architecture to inform functional interpretation of genetic variants. Branchpointer identifies all published deleterious branchpoint mutations annotated in clinical variant databases, and finds thousands of additional clinical and common genetic variants with similar predicted effects. This genome-wide annotation of branchpoints provides a reference for the genetic analysis of splicing, and the interpretation of noncoding variation. 
 
-Conclusions: We propose the broad annotation of branchpoints constitutes a valuable resource for further investigations into the genetic encoding of splicing patterns, and interpreting the impact of common- and disease-causing human genetic variation on gene splicing.
-
-##Model Generation (model_generation)
+## Model Generation (model_generation)
 Scripts for training the branchpoint machine learning model
 
-##Prediction of branchpoints in genome annotations (genome_predictions)
-Scripts for predicting branchpoints in Human (Gencodev24, Gencodev12, Gencodev19), Mouse (GencodevM10), Zebrafish, Xenopus, Drosophila, and Chicken.
+## Prediction of branchpoints in genome annotations (genome_predictions)
+Scripts for predicting branchpoints in Human (Gencodev24, Gencodev19)
 
-##Analysis and Figures (analysis)
+## Analysis and Figures (analysis)
 Scripts for analysing model performance, genomic attributes of branchpoints, and impact of variation on branchpoints.
-
-
-
