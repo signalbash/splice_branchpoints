@@ -14,11 +14,24 @@ library(PRROC)
 library(branchpointer)
 library(GenomicRanges)
 
+# redo fastas?
+rerunFasta <- FALSE
+
+
 ###### load in testing data and model ######
 
 load("data/gbm_final_model_42.RData")
+load("data/nb_model_only.RData")
+
 n = predict(model, testing, "prob")
 testing$branchpoint_prob=n$HC
+n = predict(model, testingOptim, "prob")
+testingOptim$branchpoint_prob=n$HC
+
+n = predict(model.nb, testing, "prob")
+testing$branchpoint_prob_NB=n$HC
+n = predict(model.nb, testingOptim, "prob")
+testingOptim$branchpoint_prob_NB=n$HC
 
 #write training / testing indexes to file
 training_ids <- branchpoint_df_HCN$new_ID[c(trainIndex.pos, trainIndex.neg)]
@@ -47,11 +60,11 @@ cutoff_performance <- data.frame(vals=seq(from=0.01, to=0.99, by=0.01),
                                  F1=NA)
 
 for(v in seq(along=cutoff_performance$vals)){
-  testing$Pred_Class="NEG"
-  testing$Pred_Class[testing$branchpoint_prob > cutoff_performance$vals[v]] <-  "HC"
-  keep=which(testing$branchpoint_prob > cutoff_performance$vals[v] & 
-               testing$branchpoint_prob < cutoff_performance$vals[v]+0.01)
-  c=confusionMatrix(testing$Pred_Class, testing$Class)
+  testingOptim$Pred_Class="NEG"
+  testingOptim$Pred_Class[testingOptim$branchpoint_prob > cutoff_performance$vals[v]] <-  "HC"
+  keep=which(testingOptim$branchpoint_prob > cutoff_performance$vals[v] & 
+               testingOptim$branchpoint_prob < cutoff_performance$vals[v]+0.01)
+  c=confusionMatrix(testingOptim$Pred_Class, testingOptim$Class)
   
   cutoff_performance$Accuracy[v] <- as.numeric(c$overall['Accuracy'])
   cutoff_performance$Balanced_Accuracy[v] <- as.numeric(c$byClass['Balanced Accuracy'])
@@ -65,19 +78,80 @@ for(v in seq(along=cutoff_performance$vals)){
 write.csv(cutoff_performance, "data/cutoff_performance.csv")
 BP_prob_cutoff <- cutoff_performance$vals[which.max(cutoff_performance$F1)]
 
+###### Find optimal probability cutoff ######
+
+cutoff_performance.NB <- data.frame(vals=seq(from=0.01, to=0.99, by=0.01),
+                                 Accuracy=NA,
+                                 Balanced_Accuracy=NA,
+                                 Sensitivity=NA,
+                                 Specificity=NA,
+                                 PPV=NA,
+                                 NPV=NA,
+                                 F1=NA)
+
+for(v in seq(along=cutoff_performance.NB$vals)){
+  testingOptim$Pred_Class="NEG"
+  testingOptim$Pred_Class[testingOptim$branchpoint_prob_NB > cutoff_performance$vals[v]] <-  "HC"
+  keep=which(testingOptim$branchpoint_prob_NB > cutoff_performance.NB$vals[v] & 
+               testingOptim$branchpoint_prob_NB < cutoff_performance.NB$vals[v]+0.01)
+  c=confusionMatrix(testingOptim$Pred_Class, testingOptim$Class)
+  
+  cutoff_performance.NB$Accuracy[v] <- as.numeric(c$overall['Accuracy'])
+  cutoff_performance.NB$Balanced_Accuracy[v] <- as.numeric(c$byClass['Balanced Accuracy'])
+  cutoff_performance.NB$Sensitivity[v] <- as.numeric(c$byClass['Sensitivity'])
+  cutoff_performance.NB$Specificity[v] <- as.numeric(c$byClass['Specificity'])
+  cutoff_performance.NB$PPV[v] <- as.numeric(c$byClass['Pos Pred Value'])
+  cutoff_performance.NB$NPV[v] <- as.numeric(c$byClass['Neg Pred Value'])
+  cutoff_performance.NB$F1[v] <- as.numeric(c$byClass['F1'])
+}
+
+BP_prob_cutoff.NB <- cutoff_performance.NB$vals[which.max(cutoff_performance.NB$F1)]
+
+testing$Pred_Class <- "NEG"
+testing$Pred_Class[which(testing$branchpoint_prob >= BP_prob_cutoff)] <- "HC"
+
+testingOptim$Pred_Class <- "NEG"
+testingOptim$Pred_Class[which(testingOptim$branchpoint_prob >= BP_prob_cutoff)] <- "HC"
+
+testing$Pred_Class_NB <- "NEG"
+testing$Pred_Class_NB[which(testing$branchpoint_prob_NB >= BP_prob_cutoff.NB)] <- "HC"
+
+testingOptim$Pred_Class_NB <- "NEG"
+testingOptim$Pred_Class_NB[which(testingOptim$branchpoint_prob_NB >= BP_prob_cutoff.NB)] <- "HC"
+
 #set branchpointer classes
 training <- cbind(as.data.frame(branchpoint_df_HCN)[c(trainIndex.pos, trainIndex.neg), ],
                   Class=training$Class)
 
+# combine two testing sets
 testing <- cbind(as.data.frame(branchpoint_df_HCN)[c(testIndex.pos, testIndex.neg), ],
                  Class=testing$Class,
                  branchpoint_prob=testing$branchpoint_prob,
-                 Pred_Class=testing$Pred_Class)
+                 Pred_Class=testing$Pred_Class,
+                 branchpoint_prob_NB=testing$branchpoint_prob_NB,
+                 Pred_Class_NB=testing$Pred_Class_NB)
 testing$Class <-
   c(rep("HC", testingPositives), rep("NEG", testingNegatives))
 testing$new_ID <- branchpoint_df_HCN$new_ID[c(testIndex.pos, testIndex.neg)]
 testing$set_name_long <- 
   gsub("NEG","Negatives", gsub("HC", "Mercer branchpoints",testing$Class))
+
+testingOptim <- cbind(as.data.frame(branchpoint_df_HCN)[c(testIndexOptim.pos, testIndexOptim.neg), ],
+                 Class=testingOptim$Class,
+                 branchpoint_prob=testingOptim$branchpoint_prob,
+                 Pred_Class=testingOptim$Pred_Class,
+                 branchpoint_prob_NB=testingOptim$branchpoint_prob_NB,
+                 Pred_Class_NB=testingOptim$Pred_Class_NB)
+testingOptim$Class <-
+  c(rep("HC", testingPositives), rep("NEG", testingNegatives))
+testingOptim$new_ID <- branchpoint_df_HCN$new_ID[c(testIndexOptim.pos, testIndexOptim.neg)]
+testingOptim$set_name_long <- 
+  gsub("NEG","Negatives", gsub("HC", "Mercer branchpoints",testingOptim$Class))
+
+testing <- rbind(testing, testingOptim[,match(colnames(testing), colnames(testingOptim))])
+testing$test_set <- c(rep("T", length(c(testIndex.pos, testIndex.neg))),
+                      rep("O", length(c(testIndexOptim.pos, testIndexOptim.neg))))
+
 
 ###### variable importance ######
 
@@ -281,19 +355,20 @@ bed[,2] <- bed[,3] - 101
 bed[,3] <- bed[,3] - 1
 uid <- "pos_test"
 
-#write bed file
-write.table(
-  bed, sep = "\t", file = paste0("data/intron_",uid,".bed"),
-  row.names = F,col.names = F,quote = F
-)
-#convert to fasta using bedtools
-cmd <- paste0(
-  "/Applications/apps/bedtools2/bin/bedtools getfasta -fi ",
-  "data/GRCh37.p13.genome.fa",
-  " -bed data/intron_",uid,".bed -fo data/intron_",uid,".fa -name -s"
-)
-system(cmd)
-
+if(rerunFasta == TRUE){
+  #write bed file
+  write.table(
+    bed, sep = "\t", file = paste0("data/intron_",uid,".bed"),
+    row.names = F,col.names = F,quote = F
+  )
+  #convert to fasta using bedtools
+  cmd <- paste0(
+    "/Applications/apps/bedtools2/bin/bedtools getfasta -fi ",
+    "data/GRCh37.p13.genome.fa",
+    " -bed data/intron_",uid,".bed -fo data/intron_",uid,".fa -name -s"
+  )
+  system(cmd)
+}
 #read .fa
 fasta <- fread(paste0("data/intron_",uid,".fa"), header = F)
 fasta_pos <- as.data.frame(fasta)
@@ -310,20 +385,23 @@ bed <- testing.neg[,c('chromosome','exon_ends','exon_ends','exon_id','dist.2','s
 bed[,5] <- 0
 bed[,3] <- bed[,2] + 100
 uid <- "neg_test"
-#write bed file
-#write bed file
-write.table(
-  bed, sep = "\t", file = paste0("data/intron_",uid,".bed"),
-  row.names = F,col.names = F,quote = F
-)
-#convert to fasta using bedtools
-cmd <- paste0(
-  "/Applications/apps/bedtools2/bin/bedtools getfasta -fi ",
-  "data/GRCh37.p13.genome.fa",
-  " -bed data/intron_",uid,".bed -fo data/intron_",uid,".fa -name -s"
-)
-system(cmd)
 
+if(rerunFasta == TRUE){
+  
+  #write bed file
+  write.table(
+    bed, sep = "\t", file = paste0("data/intron_",uid,".bed"),
+    row.names = F,col.names = F,quote = F
+  )
+  
+  #convert to fasta using bedtools
+  cmd <- paste0(
+    "/Applications/apps/bedtools2/bin/bedtools getfasta -fi ",
+    "data/GRCh37.p13.genome.fa",
+    " -bed data/intron_",uid,".bed -fo data/intron_",uid,".fa -name -s"
+  )
+  system(cmd)
+}
 #read .fa
 fasta <- fread(paste0("data/intron_",uid,".fa"), header = F)
 fasta_neg <- as.data.frame(fasta)
@@ -340,26 +418,17 @@ fasta_seqs = fasta[,c('id','seq')]
 fasta_seqs$id = paste0(">",fasta_seqs$id)
 fasta_seqs = fasta_seqs[!duplicated(fasta_seqs$id),]
 
-#fa seqs for svm-bp
-
-parts <- ceiling(dim(fasta_seqs)[1] / 1000)
-
-for(p in 1:parts){
-  
-  index_end <- 1000*p
-  index_start <- index_end - 999
-  index_end <- min(dim(fasta_seqs)[1], index_end)
-  
-  
+if(rerunFasta == TRUE){
+  #fa seqs for svm-bp
   write.table(
-    fasta_seqs[index_start:index_end,], file = paste0("data/testing_SVM_seqs_", p, ".fa"),
+    fasta_seqs, file = paste0("data/testing_SVM_seqs.fa"),
     row.names = F,col.names = F,quote =
       F, sep = "\n"
   )
+  
+  cmd <- "python ~/Applications/svm-bpfinder/svm_bpfinder.py -i data/testing_SVM_seqs.fa -s Hsap > data/svm-BP_output.txt"
+  system(cmd)
 }
-#need to add \n between id and seq
-#run 1000 sequences at a time on webserver:
-#http://regulatorygenomics.upf.edu/Software/SVM_BP/
 
 ###### Read in other predictions ######
 #csv of all heptamer scores run through HSF branchpoints
@@ -395,9 +464,10 @@ SVM_BP_cutoff <- data.frame(score_range=seq(min(testing$svmBPscore),
 
 for (v in seq_along(SVM_BP_cutoff$score_range)) {
 
-  testing$svmBP_class <- "NEG"
-  testing$svmBP_class[testing$svmBPscore >= SVM_BP_cutoff$score_range[v]] <- "HC"
-  c <- confusionMatrix(testing$svmBP_class, testing$Class)
+  testing[testing$test_set == "O",]$svmBP_class <- "NEG"
+  testing$svmBP_class[testing[testing$test_set == "O",]$svmBPscore >= SVM_BP_cutoff$score_range[v]] <- "HC"
+  c <- confusionMatrix(testing[testing$test_set == "O",]$svmBP_class, 
+                       testing[testing$test_set == "O",]$Class)
   SVM_BP_cutoff$Accuracy[v] <- c$overall['Accuracy']
   SVM_BP_cutoff$F1[v] <- c$byClass['F1']
   
@@ -413,6 +483,7 @@ testing$svmBP_class[testing$svmBPscore >= SVM_BP_BestCutoff] <- "HC"
 testing$heptamers <- with(testing, paste0(seq_neg5,seq_neg4,seq_neg3,seq_neg2,seq_neg1, seq_pos0, seq_pos1))
 m <- match(testing$heptamers, HSF_hept$heptamer)
 testing$HSFBPscore <- HSF_hept$HSF_score[m]
+testing$HSFBP_class <- NA
 
 #no appropriate cutoff given in text, pick out best using same method as branchpointer
 HSF_BP_cutoff <- data.frame(score_range=seq(min(testing$HSFBPscore),
@@ -423,9 +494,11 @@ HSF_BP_cutoff <- data.frame(score_range=seq(min(testing$HSFBPscore),
 
 for (v in seq_along(HSF_BP_cutoff$score_range)) {
   
-  testing$HSFBP_class <- "NEG"
-  testing$HSFBP_class[testing$HSFBPscore >= HSF_BP_cutoff$score_range[v]] <- "HC"
-  c <- confusionMatrix(testing$HSFBP_class, testing$Class)
+  testing[testing$test_set == "O",]$HSFBP_class <- "NEG"
+  testing[testing$test_set == "O",]$HSFBP_class[testing[testing$test_set == "O",]$HSFBPscore >= 
+                                                  HSF_BP_cutoff$score_range[v]] <- "HC"
+  c <- confusionMatrix(testing[testing$test_set == "O",]$HSFBP_class, 
+                       testing[testing$test_set == "O",]$Class)
   HSF_BP_cutoff$Accuracy[v] <- c$overall['Accuracy']
   HSF_BP_cutoff$F1[v] <- c$byClass['F1']
   
@@ -446,46 +519,42 @@ testing$UNA_class[which(testing$seq_pos0 == "A" &
 testing$branchpointer_class <- "NEG"
 testing$branchpointer_class[which(testing$branchpoint_prob >= BP_prob_cutoff)] <- "HC"
 
+#use branchpointer for classification
+testing$branchpointer_class_NB <- "NEG"
+testing$branchpointer_class_NB[which(testing$branchpoint_prob_NB >= BP_prob_cutoff.NB)] <- "HC"
+
+
 ###### compare methods for classification ######
 
 #create confusion matrices
-c1 <- confusionMatrix(testing$HSFBP_class, testing$set)
-c2 <- confusionMatrix(testing$svmBP_class, testing$set)
-c3 <- confusionMatrix(testing$branchpointer_class, testing$set)
-c4 <- confusionMatrix(testing$UNA_class, testing$set)
+c1 <- confusionMatrix(testing$HSFBP_class[testing$test_set=="T"], testing$set[testing$test_set=="T"])
+c2 <- confusionMatrix(testing$svmBP_class[testing$test_set=="T"], testing$set[testing$test_set=="T"])
+c3 <- confusionMatrix(testing$branchpointer_class[testing$test_set=="T"], testing$set[testing$test_set=="T"])
+c4 <- confusionMatrix(testing$UNA_class[testing$test_set=="T"], testing$set[testing$test_set=="T"])
+c5 <- confusionMatrix(testing$branchpointer_class_NB[testing$test_set=="T"], testing$set[testing$test_set=="T"])
 
 df <- data.frame(
   HSF = c1$byClass, svmBP = c2$byClass,
-  branchpointer = c3$byClass, UNA = c4$byClass
+  branchpointer = c3$byClass, UNA = c4$byClass, branchpointer_NB = c5$byClass
 )
 accuracy_row <- data.frame(
   HSF = c1$overall, svmBP = c2$overall,
-  branchpointer = c3$overall,UNA = c4$overall
+  branchpointer = c3$overall,UNA = c4$overall, branchpointer_NB = c5$overall
 )
 df <- rbind(df, accuracy_row)
 df <- as.data.frame(t(df))
 
 classification_performance <- df[,c(1:4,7,11,12)]
 
-load("data/nb_performance.RData")
-
-naive_bayes_line <- nb_cutoff_performance[which.max(nb_cutoff_performance$F1),c(8,2,4:7)]
-
-classification_performance <- classification_performance[,c(5,7,1:4)]
-colnames(classification_performance) <- c("F1","Accuracy","Sensitivity","Specificity","PPV","NPV")
-colnames(naive_bayes_line) <- colnames(classification_performance)
-rownames(naive_bayes_line) <-"naive bayes"
-classification_performance <- rbind(classification_performance, naive_bayes_line)
-classification_performance <- classification_performance[c(3,4,5,1,2),]
-
 for(i in 1:ncol(classification_performance)){
   classification_performance[,i] <- round(classification_performance[,i], 3)
 }
 
 classification_performance <- cbind(Method=rownames(classification_performance), classification_performance)
+classification_performance <- classification_performance[,c(1,6,8,2,3,4,5)]
 
 write.table(
-  classification_performance, file = "Tables/Table1.csv", row.names = F,quote = F,sep = "\t"
+  classification_performance, file = "Tables/Table1.csv", row.names = F,quote = F,sep = ","
 )
 
 ###### Compare methods using scores for pr/roc curves ######
@@ -494,41 +563,53 @@ write.table(
 #saved curve objects in branchpointer_curves.Rdata
 
 roc.1 <- roc.curve(scores.class0 =
-                   testing$svmBPscore[testing$set=="HC"],
+                   testing$svmBPscore[testing$set=="HC" & testing$test_set=="T"],
                  scores.class1 =
-                   testing$svmBPscore[testing$set=="NEG"], curve=TRUE)
+                   testing$svmBPscore[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
 pr.1 <- pr.curve(scores.class0 =
-                 testing$svmBPscore[testing$set=="HC"],
+                 testing$svmBPscore[testing$set=="HC"& testing$test_set=="T"],
                scores.class1 =
-                 testing$svmBPscore[testing$set=="NEG"], curve=TRUE)
+                 testing$svmBPscore[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
 svm_BP.AUC <- roc.1$auc
 svm_BP.pr <- pr.1$auc.integral
 
 roc.2 <- roc.curve(scores.class0 =
-                   testing$HSFBPscore[testing$set=="HC"],
+                   testing$HSFBPscore[testing$set=="HC"& testing$test_set=="T"],
                  scores.class1 =
-                   testing$HSFBPscore[testing$set=="NEG"], curve=TRUE)
+                   testing$HSFBPscore[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
 pr.2 <- pr.curve(scores.class0 =
-                 testing$HSFBPscore[testing$set=="HC"],
+                 testing$HSFBPscore[testing$set=="HC"& testing$test_set=="T"],
                scores.class1 =
-                 testing$HSFBPscore[testing$set=="NEG"], curve=TRUE)
+                 testing$HSFBPscore[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
 
 HSFBP.AUC <- roc.2$auc
 HSFBP.pr <- pr.2$auc.integral
 
 roc.3 <- roc.curve(scores.class0 =
-                 testing$branchpoint_prob[testing$set=="HC"],
+                 testing$branchpoint_prob[testing$set=="HC"& testing$test_set=="T"],
                scores.class1 =
-                 testing$branchpoint_prob[testing$set=="NEG"], curve=TRUE)
+                 testing$branchpoint_prob[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
 pr.3 <- pr.curve(scores.class0 =
-               testing$branchpoint_prob[testing$set=="HC"],
+               testing$branchpoint_prob[testing$set=="HC"& testing$test_set=="T"],
              scores.class1 =
-               testing$branchpoint_prob[testing$set=="NEG"], curve=TRUE)
+               testing$branchpoint_prob[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
 branchpointer.AUC <- roc.3$auc
 branchpointer.pr <- pr.3$auc.integral
 
-save(roc.1,roc.2,roc.3,
-     pr.1,pr.2,pr.3, file="data/branchpointer_curves.Rdata")
+# ADD NB ROC
+roc.4 <- roc.curve(scores.class0 =
+                     testing$branchpoint_prob_NB[testing$set=="HC"& testing$test_set=="T"],
+                   scores.class1 =
+                     testing$branchpoint_prob_NB[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
+pr.4 <- pr.curve(scores.class0 =
+                   testing$branchpoint_prob_NB[testing$set=="HC"& testing$test_set=="T"],
+                 scores.class1 =
+                   testing$branchpoint_prob_NB[testing$set=="NEG"& testing$test_set=="T"], curve=TRUE)
+branchpointer_NB.AUC <- roc.4$auc
+branchpointer_NB.pr <- pr.4$auc.integral
+
+save(roc.1,roc.2,roc.3,roc.4,
+     pr.1,pr.2,pr.3,pr.4, file="data/branchpointer_curves.Rdata")
 
 load("data/branchpointer_curves.Rdata")
 
@@ -541,7 +622,10 @@ roc_curve_HSFBP$method <- "HSF_BP"
 roc_curve_BP <- data.frame(roc.3$curve)
 colnames(roc_curve_BP) <- c("FPR","TPR","cut")
 roc_curve_BP$method <- "BP"
-roc_curves=rbind(roc_curve_SVMBP,roc_curve_HSFBP,roc_curve_BP)
+roc_curve_BP_NB <- data.frame(roc.4$curve)
+colnames(roc_curve_BP_NB) <- c("FPR","TPR","cut")
+roc_curve_BP_NB$method <- "BP_NB"
+roc_curves=rbind(roc_curve_SVMBP,roc_curve_HSFBP,roc_curve_BP,roc_curve_BP_NB)
 
 pr_curve_SVMBP <- data.frame(pr.1$curve)
 pr_curve_SVMBP$method <- "SVM_BP"
@@ -549,7 +633,9 @@ pr_curve_HSFBP <- data.frame(pr.2$curve)
 pr_curve_HSFBP$method <- "HSF_BP"
 pr_curve_BP <- data.frame(pr.3$curve)
 pr_curve_BP$method <- "BP"
-pr_curves=rbind(pr_curve_SVMBP,pr_curve_HSFBP,pr_curve_BP)
+pr_curve_BP_NB <- data.frame(pr.4$curve)
+pr_curve_BP_NB$method <- "BP_NB"
+pr_curves=rbind(pr_curve_SVMBP,pr_curve_HSFBP,pr_curve_BP,pr_curve_BP_NB)
 
 rm(roc_curve_BP,roc_curve_HSFBP,roc_curve_SVMBP,
    pr_curve_BP,pr_curve_HSFBP,pr_curve_SVMBP)
@@ -557,9 +643,11 @@ rm(roc_curve_BP,roc_curve_HSFBP,roc_curve_SVMBP,
 roc_curves$method <- gsub("SVM_BP", "SVM-BPFinder",roc_curves$method )
 roc_curves$method <- gsub("HSF_BP", "HSF",roc_curves$method )
 roc_curves$method[roc_curves$method == "BP"] <- "branchpointer"
+roc_curves$method[roc_curves$method == "BP_NB"] <- "Naive Bayes"
 
 pr_curves$method <- gsub("SVM_BP", "SVM-BPFinder",pr_curves$method )
 pr_curves$method <- gsub("HSF_BP", "HSF",pr_curves$method )
 pr_curves$method[pr_curves$method == "BP"] <- "branchpointer"
+pr_curves$method[pr_curves$method == "BP_NB"] <- "Naive Bayes"
 
 save(roc_curves, pr_curves, testing, U2_df, cutoff_performance,gbm_importance, file="data/performance_objects.Rdata")

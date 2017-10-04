@@ -80,7 +80,7 @@ message(i)
 clinvar_predictions <- do.call("c", preds)
 
 clinvar_summary <- branchpointer::predictionsToSummary(query, clinvar_predictions, 
-                                                     probabilityCutoff = 0.52, 
+                                                     probabilityCutoff = 0.48, 
                                                      probabilityChange = 0.15)
 
 clinvar_summary$allele_ref_feat_strand <- clinvar_summary$ref_allele
@@ -175,11 +175,11 @@ n <- which(!is.na(m))
 OMIM_preds <- clinvar_predictions[n]
 
 ref_BP_pos <- aggregate(to_3prime_point ~ id,
-          data=as.data.frame(OMIM_preds[OMIM_preds$branchpoint_prob >= 0.52 & OMIM_preds$status=="REF"]),
+          data=as.data.frame(OMIM_preds[OMIM_preds$branchpoint_prob >= 0.48 & OMIM_preds$status=="REF"]),
           function(x) paste(as.character(x),collapse=","))
 
 alt_BP_pos <- aggregate(to_3prime_point ~ id,
-          data=as.data.frame(OMIM_preds[OMIM_preds$branchpoint_prob >= 0.52 & OMIM_preds$status=="ALT"]),
+          data=as.data.frame(OMIM_preds[OMIM_preds$branchpoint_prob >= 0.48 & OMIM_preds$status=="ALT"]),
           function(x) paste(as.character(x),collapse=","))
 
 OMIM_branchpoint_SNPs_clinVar$BPs_ref <- NA
@@ -192,10 +192,29 @@ OMIM_branchpoint_SNPs_clinVar$Allele <- paste0(OMIM_branchpoint_SNPs_clinVar$Ref
 
 Table2 <- OMIM_branchpoint_SNPs_clinVar[,c('GeneSymbol','ClinVar.Allele.ID',"Allele",'BPs_ref',"BPs_alt")]
 colnames(Table2) <- c("Gene","ClinVar ID","Allele","BPs (ref.)","BPs (alt.)")
+
+ref_BP_pos <- aggregate(to_3prime_point ~ id,
+                        data=as.data.frame(clinvar_predictions[grepl("rs2269219", clinvar_predictions$id) & 
+                                                                 clinvar_predictions$branchpoint_prob > 0.48 &
+                                                                   clinvar_predictions$status=="REF"]),
+                        function(x) paste(as.character(x),collapse=","))
+
+alt_BP_pos <- aggregate(to_3prime_point ~ id,
+                        data=as.data.frame(clinvar_predictions[grepl("rs2269219", clinvar_predictions$id) & 
+                                                                 clinvar_predictions$branchpoint_prob > 0.48 &
+                                                                 clinvar_predictions$status=="ALT"]),
+                        function(x) paste(as.character(x),collapse=","))
+
+line_FECH <- data.frame(Gene="FECH", ClinVarID=15589, Allele="G/A", refBP=ref_BP_pos$to_3prime_point,
+                        altBP=alt_BP_pos$to_3prime_point)
+colnames(line_FECH) <- c("Gene","ClinVar ID","Allele","BPs (ref.)","BPs (alt.)")
+
+Table2 <- rbind(Table2, line_FECH)
 write.csv(Table2, file="Tables/Table2.csv", row.names=FALSE)
 
 query_clinvar <- query
 
-save(clinVars_filtered, OMIM_branchpoint_SNPs_clinVar, clinvar_summary, 
+save(clinvar_summary_filtered, OMIM_branchpoint_SNPs_clinVar, clinvar_summary, 
      query_clinvar,clinvar_predictions, ClinVar_variant_summary_hg38,
      snp_info_clinVar, file="data/diseaseVariants.Rdata")
+save.image("data/diseaseVariants_image.Rdata")

@@ -88,7 +88,7 @@ for(r in 1:reps){
   predictions <- query[m]
   mcols(predictions) <- query_pred
   
-  summary <- branchpointer::predictionsToSummary(query, predictions, probabilityCutoff = 0.52, probabilityChange = 0.15)
+  summary <- branchpointer::predictionsToSummary(query, predictions, probabilityCutoff = 0.48, probabilityChange = 0.15)
   
   if(exists("summary_all")){
     summary_all <- c(summary_all, summary)

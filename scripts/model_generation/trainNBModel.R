@@ -22,7 +22,7 @@ set.seed(as.numeric(args[1]))
 filteredDescr=filteredDescr[,-1]
 
 trainingPositives=40000
-trainingNegatives=trainingPositives * 8
+trainingNegatives=trainingPositives * 100
 testingPositives=5000
 testingNegatives=testingPositives * 20
 
@@ -68,11 +68,6 @@ message("Building model")
 ptm <- proc.time()
   
 m <- which(colnames(training) == "Class")
-
-gbmGrid <-  expand.grid(interaction.depth = c(21), 
-                        n.trees = 2000, 
-                        shrinkage = 0.005,
-                        n.minobsinnode = c(20))
   
 model <-train(x = as.data.frame(training[, -m]),y = training$Class,
               method="nb",
@@ -92,6 +87,33 @@ model.nb <- model
 n = predict(model.nb, testing, "prob")
 testing$branchpoint_prob_NB=n$HC
 
+###### Second testing set for F1 optimisation ######
+
+set.seed(as.numeric(args[1]) + 1)
+testIndexOptim.pos <- sample(index.pos.test[which(!(index.pos.test %in% testIndex.pos))], 
+                             testingPositives)
+testIndexOptim.neg <- sample(index.neg.test[which(!(index.neg.test %in% testIndex.neg))], 
+                             testingNegatives)
+testingOptim <- filteredDescr[c(testIndexOptim.pos, testIndexOptim.neg), ]
+testingClass <-
+  c(rep("HC", testingPositives), rep("NEG", testingNegatives))
+
+testingOptim <- as.data.frame(testingOptim)
+for (n in 1:(length(colnames(testingOptim)))) {
+  testingOptim[, n] <- as.numeric(as.character(testingOptim[, n]))
+}
+
+if (length(nzv > 0)) {
+  testingOptim = testingOptim[, -nzv]
+}
+
+testingOptim <- as.data.frame(predict(preProcValues, testingOptim))
+testingOptim <- cbind(testingOptim, Class = as.factor(testingClass))
+
+n = predict(model.nb, testingOptim, "prob")
+testingOptim$branchpoint_prob_NB=n$HC
+
+
 ###### Find optimal probability cutoff ######
 
 cutoff_performance <- data.frame(vals=seq(from=0.01, to=0.99, by=0.01),
@@ -104,11 +126,12 @@ cutoff_performance <- data.frame(vals=seq(from=0.01, to=0.99, by=0.01),
                                  F1=NA)
 
 for(v in seq(along=cutoff_performance$vals)){
-  testing$Pred_Class="NEG"
-  testing$Pred_Class[testing$branchpoint_prob > cutoff_performance$vals[v]] <-  "HC"
-  keep=which(testing$branchpoint_prob > cutoff_performance$vals[v] & 
-               testing$branchpoint_prob < cutoff_performance$vals[v]+0.01)
-  c=confusionMatrix(testing$Pred_Class, testing$Class)
+  testingOptim$Pred_Class="NEG"
+  testingOptim$Pred_Class[testingOptim$branchpoint_prob > cutoff_performance$vals[v]] <-  "HC"
+  keep=which(testingOptim$branchpoint_prob > cutoff_performance$vals[v] & 
+               testingOptim$branchpoint_prob < cutoff_performance$vals[v]+0.01)
+  
+  c=confusionMatrix(testingOptim$Pred_Class, testingOptim$Class)
   
   cutoff_performance$Accuracy[v] <- as.numeric(c$overall['Accuracy'])
   cutoff_performance$Balanced_Accuracy[v] <- as.numeric(c$byClass['Balanced Accuracy'])
@@ -126,4 +149,5 @@ testing$Pred_Class_NB[testing$branchpoint_prob_NB > cutoff_performance$vals[whic
 testing_nb <- testing[,c('Class','branchpoint_prob_NB','Pred_Class_NB')]
 
 save(testing_nb, nb_cutoff_performance, model.nb, file="data/nb_performance.RData")
+save(model.nb, file="data/nb_model_only.RData")
 

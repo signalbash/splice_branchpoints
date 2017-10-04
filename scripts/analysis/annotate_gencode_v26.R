@@ -14,7 +14,7 @@ library(DEXSeq)
 library(branchpointer)
 
 #Variables
-cutoff = 0.52
+cutoff = 0.48
 
 #from process_predictions.R
 load("data/gencode_v26.RData")
@@ -390,5 +390,5 @@ mt$min_dist <- apply(mt[,c(4:todim)],1,min, na.rm=T)
 m <- match(branchpoints_introns$introns, mt$name) 
 branchpoints_introns <- cbind(branchpoints_introns, mt[m, c("max_dist","min_dist","max_dist_diff","min_dist_diff")])    
 
-save(G26_all, branchpoints_introns, branchpoints_introns_ir, fivemer_summary,K562_IR, conservation_summary,
+save(G26_all, branchpoints_introns, fivemer_summary,conservation_summary,
      file = "data/Figure_files.Rdata")

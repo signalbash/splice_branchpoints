@@ -39,7 +39,7 @@ write.table(cons_tab, file=paste0("data/conservation/G26_cons_tab.csv"), row.nam
 
 #make table covering intron regions from phylop bigwig
 #python python scripts/analysis/genome_wide_predictions/get_bw_entries.py -bw data/HG38/hg38.phyloP100way.bw -csv data/conservation/G24_cons_tab.csv -o data/conservation/phyloP_introns100.csv
-cmd <- "python scripts/analysis/genome_wide_predictions/get_bw_entries.py -bw data/conservation/hg38.phyloP100way.bw -csv data/conservation/G26_cons_tab.csv -o data/conservation/phyloP_introns100.csv"
+cmd <- "python scripts/analysis/get_bw_entries.py -bw data/conservation/hg38.phyloP100way.bw -csv data/conservation/G26_cons_tab.csv -o data/conservation/phyloP_introns100.csv"
 system(cmd)
 
 cons_scores <- as.data.frame(fread("data/conservation/phyloP_introns100.csv"))
@@ -73,14 +73,14 @@ for(c in seq_along(chroms)){
 write.table(conservation_long, "data/conservation/conservation_in_introns.txt", row.names = F,quote=F, sep="\t")
 conservation <- conservation_long
 rm(conservation_long)
-colnames(conservation)[1] <- "chromosome"
+colnames(conservation)[1] <- "chrom"
 
 ###### annotate branchpoint predictions with conservation ######
 
 conservation <- as.data.frame(fread("data/conservation/conservation_in_introns.txt"))
 
 chroms <- unique(G26_all$chromosome)
-prob_score_cutoff <- 0.52
+prob_score_cutoff <- 0.48
 
 #only for predicted bps to save time
 G26_BP <- G26_all[G26_all$branchpoint_prob >= prob_score_cutoff | G26_all$in_testtrain == "HC",]
@@ -90,7 +90,7 @@ G26_BP$id <- with(G26_BP, paste0(exon_id, "_", to_3prime, "_",branchpoint_nt))
 for(c in seq_along(chroms)){
   
   c1 <- which(G26_BP$chromosome==chroms[c])
-  c2 <- which(conservation$chromosome==chroms[c])
+  c2 <- which(conservation$chrom==chroms[c])
   
   #G24_df is id,(end) position, strand, dist2
   #cons_df is conservation

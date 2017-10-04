@@ -23,6 +23,7 @@ theme_figure <- theme_bw()+ theme(text=element_text(size=6),legend.key.size=unit
                                   axis.line.x = element_line(), 
                                   axis.line.y = element_line(),
                                   axis.ticks = element_line(size=0.25),
+                                  #legend.position = "none",
                                   axis.ticks.length = unit(0.05, "cm"),
                                   panel.background = element_blank(),
                                   plot.title = element_text(hjust = 0.5))
@@ -39,11 +40,12 @@ ggplot_legend<-function(a.gplot){
   return(legend)
 }
 
-cutoff = 0.52
+cutoff = 0.48
 
 # Figure 1. Development and performance of the branchpointer model
 
 load("data/performance_objects.Rdata")
+load("data/Figure_files.Rdata")
 
 # variable importance in GBM model
 Figure1B <- ggplot(gbm_importance[!duplicated(gbm_importance$variableLO),], 
@@ -54,64 +56,146 @@ Figure1B <- ggplot(gbm_importance[!duplicated(gbm_importance$variableLO),],
   theme_figure + theme(legend.position = c(0.8,0.2),legend.title = element_blank()) + 
   ggtitle(label="Variable Importance")
 
+Figure1C <- ggplot(U2_df[abs(U2_df$pos) < 4,], aes(x=pos, y=importanceScaled, fill=nt)) + 
+  geom_bar(stat="identity", position="dodge") +
+  scale_x_continuous(name="Distance to Branchpoint", breaks = seq(-3,3,1), labels=c("-3","-2","-1","BP","1","2","3")) + 
+  scale_y_continuous(name="Feature Importance\nin Model", breaks=0:5, labels=c("0.00", "1.00","2.00","3.00","4.00","5.00")) + 
+  scale_fill_manual(values=c(nt_cols)) + 
+  theme_figure + theme(legend.position = "none")
+
+Figure1 <- ggdraw() +
+  draw_plot(Figure1B, 0,0.4,1,0.35) +
+  draw_plot(Figure1C, 0.15,0,0.85,0.25) +
+  draw_plot_label(c("A","B","C"), c(0,0,0), c(1,0.75,0.4), size=12)
+
+pdf("Figures/Figure1.pdf", useDingbats = F, height=6, width=3.25)
+Figure1
+dev.off()
 
 #ROC curves
-Figure1C <- ggplot(roc_curves, aes(x = FPR,y = TPR, col = method)) +
+Figure2A <- ggplot(roc_curves, aes(x = FPR,y = TPR, col = method)) +
   geom_line() +
   scale_color_manual(values=nt_cols) + theme_figure +
   theme(legend.position = c(0.8,0.2))  + ggtitle(label="ROC Curve")
 #PR curves
-Figure1D <- ggplot(pr_curves, aes(x = X1,y = X2, col = method)) +
+Figure2B <- ggplot(pr_curves, aes(x = X1,y = X2, col = method)) +
   geom_line() +
   scale_color_manual(values=nt_cols) +
   labs(x="Recall",y="Precision") +
   theme_figure + theme(legend.position = c(0.75,0.75)) + ggtitle(label="Precision Recall")
 
+Figure2 <- ggdraw() +
+  draw_plot(Figure2A, 0,0.15,0.5,0.85) +
+  draw_plot(Figure2B, 0.5,0.15,0.5,0.85) +
+  draw_plot(ggplot_legend(Figure2A), 0.5,0,0.5,0.2) +
+  draw_plot_label(c("A","B"), c(0,0.5), c(1,1), size=12)
+
+pdf("Figures/Figure2.pdf", useDingbats = F, height=2, width=3.25)
+Figure2
+dev.off()
+
+Figure3 <- ggplot(conservation_summary, 
+                   aes(x=as.factor(variable), col=set, group=set, y=value)) + 
+  geom_point(size=0.5) + geom_line(size=0.5) +
+  #geom_errorbar(width=0.25) +
+  facet_wrap(~multiplicity, ncol=2) +
+  scale_color_manual(values=c("grey60","grey30") , name=element_blank(), 
+                     labels=c("Mercer et al.","Predicted")) +
+  theme_figure + theme(legend.position = c(0.8, 0.7)) + 
+  scale_y_continuous(name="phyloP Conservation") + 
+  scale_x_discrete(name="Distance to Branchpoint",breaks = seq(-5,5,1), labels=c("-5","-4","-3","-2","-1","BP","1","2","3","4","5"))
+
+
+pdf("Figures/Figure3.pdf", useDingbats = F, height=1.5, width=3.25)
+Figure3
+dev.off()
+
+Figure4A <- ggplot(fivemer_summary, aes(x=percent_BP, y=median_branchpoint_prob, size=num_BP, col=BP_nt)) + 
+  geom_point(alpha=0.5) +
+  scale_color_manual(values = nt_cols, name="BP nt")+
+  scale_x_continuous(name="Relative Motif Frequency\n(BP/Negative)") + 
+  scale_y_continuous(name="Median BP\nProbability Score") + 
+  theme_figure +
+  scale_size_continuous(name="BP count", range=c(0.5,3))
+
+Figure4B <- ggplot(fivemer_summary, aes(y=median_branchpoint_prob, x=mean_U2,size=num_BP, col=BP_nt)) + 
+  geom_point(alpha=0.5) +
+  scale_color_manual(values = nt_cols, name="BP nt")+
+  scale_y_continuous(name="Median BP\nProbability Score") + 
+  scale_x_continuous(name="Mean U2 binding energy\n") +
+  theme_figure +
+  scale_size_continuous(name="BP count", range=c(0.5,3))
+
+
 #F1 cutoffs
-Figure1E <- ggplot(cutoff_performance, aes(x=vals, y=F1))  +
-  geom_smooth(col=nt_cols[4], se=FALSE)+ 
+Figure4C <- ggplot(cutoff_performance, aes(x=vals, y=F1))  +
+  #geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=0.5, shape=3)+ 
+  geom_vline(xintercept = cutoff, linetype=2, color="grey") +
   scale_x_continuous(name="Branchpointer Probability Score") +
   scale_y_continuous(name="F1") + 
-  theme_figure + ggtitle(label="Discrimination")
+  theme_figure
 
-Figure1 <- ggdraw() +
-  draw_plot(Figure1B, 0.55,0.5,0.45,0.5) +
-  draw_plot(Figure1C, 0,0,0.3,0.5) +
-  draw_plot(ggplot_legend(Figure1C), 0.3,0,0.1,0.5) +
-  draw_plot(Figure1D, 0.4,0,0.3,0.5) +
-  draw_plot(Figure1E, 0.7,0,0.3,0.5) +
-  draw_plot_label(c("A","B","C","D","E"), c(0,0.55,0,0.4,0.7), c(1,1,0.5,0.5,0.5), size=12)
 
-pdf("Figures/Figure1.pdf", useDingbats = F, height=4, width=6.5)
-Figure1
+G26_all$short_motif <- factor(paste0(stringr::str_sub(G26_all$seq_motif, start=4, end=4),
+                                     "N", stringr::str_sub(G26_all$seq_motif, start=6, end=6)), levels=c(
+                                       "ANA","CNA","GNA","TNA",
+                                       "ANC","CNC","GNC","TNC", 
+                                       "ANG","CNG","GNG","TNG", 
+                                       "ANT","CNT","GNT","TNT"))
+
+max(G26_all$branchpoint_prob[!(G26_all$short_motif %in% c("ANA","CNA","GNA","TNA"))])
+
+Figure4D <- ggplot(G26_all[G26_all$branchpoint_prob >= 0.505,], aes(x=branchpoint_prob, fill = short_motif)) +
+  geom_histogram(binwidth=0.01) +
+  guides(fill = guide_legend(ncol = 2)) + 
+  scale_fill_manual(values = c("#00441b","#238b45","#74c476","#c7e9c0",
+                               "#08306b","#2171b5",'#6baed6',"#c6dbef",
+                               "#7f2704","#d94801",'#fd8d3c',"#fdd0a2",
+                               "#67000d","#cb181d","#fb6a4a","#fcbba1"), drop=FALSE, name="Motif") +
+  scale_x_continuous(name="Branchpointer Probability Score") +
+  scale_y_continuous(name="Count") +
+  theme_figure
+
+Figure4 <- ggdraw() +
+  # draw_plot(ggplot_legend(Figure2B), 0.4,0.9,0.6,0.1) +
+  draw_plot(Figure4C, 0,0,0.35,0.5) + 
+  draw_plot(Figure4D, 0.35,0,0.65,0.5) +
+  draw_plot(Figure4A+ theme(legend.position = "none"),0,0.5,0.45,0.5) +
+  draw_plot(ggplot_legend(Figure4A), 0.45,0.5,0.1,0.5) +
+  draw_plot(Figure4B+ theme(legend.position = "none"), 0.55,0.5,0.45,0.5) +
+  draw_plot_label(c("A","B","C","D"), c(0,0.55,0,0.35), c(1,1,0.5,0.5), size=12)
+
+
+pdf("Figures/Figure4.pdf", useDingbats = F, height=3.5, width=5)
+Figure4
 dev.off()
 
 # Figure S2. Branchpointer classification performance metrics for probability cutoffs 0.01-0.99
 
 SuppFigure2A = ggplot(cutoff_performance, aes(x=vals, y=PPV))  +
-  geom_smooth(col=nt_cols[4], se=FALSE)+ 
+  #geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=0.5, shape=3)+ 
   scale_x_continuous(name="Branchpointer Probability Score") +
   scale_y_continuous(name="Positive Predictive Value") + 
   theme_figure
 
 SuppFigure2B = ggplot(cutoff_performance, aes(x=vals, y=Sensitivity))  +
-  geom_smooth(col=nt_cols[4], se=FALSE)+ 
+  #geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=0.5, shape=3)+ 
   scale_x_continuous(name="Branchpointer Probability Score") +
   scale_y_continuous(name="Sensitivity") + 
   theme_figure
 
 SuppFigure2C=ggplot(cutoff_performance, aes(x=vals, y=Accuracy))  +
-  geom_smooth(col=nt_cols[4], se=FALSE)+ 
+  #geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=0.5, shape=3)+ 
   scale_x_continuous(name="Branchpointer Probability Score") +
   scale_y_continuous(name="Accuracy") + 
   theme_figure
 
 SuppFigure2D=ggplot(cutoff_performance, aes(x=vals, y=Balanced_Accuracy))  +
-  geom_smooth(col=nt_cols[4], se=FALSE)+ 
+  #geom_smooth(col=nt_cols[4], se=FALSE)+ 
   geom_point(size=0.5, shape=3)+ 
   scale_x_continuous(name="Branchpointer Probability Score") +
   scale_y_continuous(name="Balanced Accuracy") + 
@@ -128,65 +212,6 @@ FigureS2
 dev.off()
 
 # Figure 2. Nucleotide sequence motif importance in branchpointer model development
-
-load("data/Figure_files.Rdata")
-
-Figure2A <- ggplot(U2_df[abs(U2_df$pos) < 4,], aes(x=pos, y=importanceScaled, fill=nt)) + 
-  geom_bar(stat="identity", position="dodge") +
-  scale_x_continuous(name="Distance to Branchpoint", breaks = seq(-3,3,1), labels=c("-3","-2","-1","BP","1","2","3")) + 
-  scale_y_continuous(name="Feature Importance\nin Model", breaks=0:5, labels=c("0.00", "1.00","2.00","3.00","4.00","5.00")) + 
-  scale_fill_manual(values=c(nt_cols)) + 
-  theme_figure + theme(legend.position = "none")
-
-G26_all$short_motif <- factor(paste0(stringr::str_sub(G26_all$seq_motif, start=4, end=4),
-                                     "N", stringr::str_sub(G26_all$seq_motif, start=6, end=6)), levels=c(
-                                       "ANA","CNA","GNA","TNA",
-                                       "ANC","CNC","GNC","TNC", 
-                                       "ANG","CNG","GNG","TNG", 
-                                       "ANT","CNT","GNT","TNT"))
-
-Figure2B <- ggplot(G26_all[G26_all$branchpoint_prob >= 0.505,], aes(x=branchpoint_prob, fill = short_motif)) +
-  geom_histogram(binwidth=0.01) +
-  guides(fill = guide_legend(ncol = 2)) + 
-  scale_fill_manual(values = c("#00441b","#238b45","#74c476","#c7e9c0",
-                               "#08306b","#2171b5",'#6baed6',"#c6dbef",
-                               "#7f2704","#d94801",'#fd8d3c',"#fdd0a2",
-                               "#67000d","#cb181d","#fb6a4a","#fcbba1"), drop=FALSE, name="Motif") +
-  scale_x_continuous(name="Branchpointer Probability Score") +
-  scale_y_continuous(name="Count") +
-  theme_figure
-
-Figure2C <- ggplot(fivemer_summary, aes(x=percent_BP, y=median_branchpoint_prob, size=num_BP, col=BP_nt)) + 
-  geom_point(alpha=0.5) +
-  scale_color_manual(values = nt_cols, name="BP nt")+
-  scale_x_continuous(name="Relative Motif Frequency\n(BP/Negative)") + 
-  scale_y_continuous(name="Median BP\nProbability Score") + 
-  theme_figure +
-  scale_size_continuous(name="BP count", range=c(0.5,3))
-
-Figure2D <- ggplot(fivemer_summary, aes(y=median_branchpoint_prob, x=mean_U2,size=num_BP, col=BP_nt)) + 
-  geom_point(alpha=0.5) +
-  scale_color_manual(values = nt_cols, name="BP nt")+
-  scale_y_continuous(name="Median BP\nProbability Score") + 
-  scale_x_continuous(name="Mean U2 binding energy\n") +
-  theme_figure +
-  scale_size_continuous(name="BP count", range=c(0.5,3))
-
-
-Figure2 <- ggdraw() +
-  # draw_plot(ggplot_legend(Figure2B), 0.4,0.9,0.6,0.1) +
-  draw_plot(Figure2A, 0,0.5,0.45,0.35) + 
-  draw_plot(Figure2B, 0.45,0.5,0.55,0.5) +
-  draw_plot(Figure2C+ theme(legend.position = "none"),0,0,0.45,0.5) +
-  draw_plot(ggplot_legend(Figure2C), 0.45,0,0.1,0.5) +
-  draw_plot(Figure2D+ theme(legend.position = "none"), 0.55,0,0.45,0.5) +
-  draw_plot_label(c("A","B","C","D"), c(0,0.45,0,0.55), c(1,1,0.5,0.5), size=12)
-
-
-pdf("Figures/Figure2.pdf", useDingbats = F, height=3.5, width=6.5)
-Figure2
-dev.off()
-
 ### Figure 3. Prediction of splicing branchpoints in GENCODE introns
 
 files <- list.files("data/outputs/branchpoints_for_training/by_type" ,
@@ -235,12 +260,13 @@ number_bp_by_gene_type=as.data.frame(table(branchpoints_introns$gene_biotype_bro
 number_bp_by_gene_type$Var1 <- factor(number_bp_by_gene_type$Var1, levels = rev(c("protein_coding","lncRNA", "unprocessed_pseudogene",
                                                                               "processed_pseudogene", "pseudogene","other")))
 
-Figure3A <- ggplot(Mercer_branchpoints_pluspred[Mercer_branchpoints_pluspred$set != "LC",], 
+
+Figure6A <- ggplot(Mercer_branchpoints_pluspred[Mercer_branchpoints_pluspred$set != "LC",], 
                    aes(x=dist.2*-1, fill=set)) + 
   geom_vline(xintercept = quantile(Mercer_branchpoints_hc$dist.2, c(0.05,.95))*-1, 
              color="grey",linetype = "dashed") +
-  geom_bar() + 
-  scale_fill_manual(values=nt_cols[c(2,4)] , name=element_blank(), 
+  geom_bar(col="grey60", size=0.25) + 
+  scale_fill_manual(values=c("black", "white") , name=element_blank(), 
                     labels=c("Predicted",
                              "Mercer et al.")) + 
   scale_x_continuous(limits=c(-100,0), 
@@ -250,41 +276,36 @@ Figure3A <- ggplot(Mercer_branchpoints_pluspred[Mercer_branchpoints_pluspred$set
   theme_figure + 
   theme(legend.position=c(0.25,0.8))
 
-Figure3B <- ggplot(branchpoints_introns[branchpoints_introns$status!="unknown",], 
-                aes(x=exon_group_log10count, fill=status)) + 
+Figure6B <- ggplot(branchpoints_introns[branchpoints_introns$status!="unknown",], 
+                aes(x=exon_group_log10count, fill=status, linetype=status)) + 
   geom_density(alpha=0.5, size=0.25) +
   theme_figure +
-  scale_fill_manual(values=nt_cols[c(2,4)] , name=element_blank(), 
+  scale_fill_manual(values=c("grey60", NA) , name=element_blank(), 
                     labels=c("Predicted",
-                             "Mercer et al.")) + 
-  theme(legend.position = c(0.7,0.8)) + 
+                             "Mercer et al.")) +
+  scale_linetype_manual(values=c("solid", "dashed")) +
+  #theme(legend.position = c(0.7,0.8)) + 
   scale_x_continuous(name="Exon Expression (log10)") + 
   scale_y_continuous(name="Density")
 
-Figure3C <- ggplot(conservation_summary, 
-       aes(x=as.factor(variable), col=set, group=set, y=value, ymin=se_lower, ymax=se_upper)) + 
-  geom_point(size=0.5) + geom_line(size=0.5) +
-  geom_errorbar(width=0.25) +
-  facet_wrap(~multiplicity, ncol=1) +
-  scale_color_manual(values=nt_cols[c(4,2)] , name=element_blank(), 
-                    labels=c("Mercer et al.","Predicted")) +
-  theme_figure + theme(legend.position = c(0.8, 0.7)) + 
-  scale_y_continuous(name="phyloP Conservation") + 
-  scale_x_discrete(name="Distance to Branchpoint",breaks = seq(-5,5,1), labels=c("-5","-4","-3","-2","-1","BP","1","2","3","4","5"))
 
-Figure3D <- ggplot(number_bp_by_gene_type[number_bp_by_gene_type$Var1 %in% names(which(table(branchpoints_introns$gene_biotype_broad2) > 2000)),], 
-                   aes(x=Var1, y=Freq, fill=Var2)) + 
-  scale_fill_manual(values = BP_multi_colors[c(1,2,5)], name="Branchpoint\ncount") + 
-  geom_bar(stat="identity", col="black", size=0.25) + coord_flip() + theme_figure +
+Figure6C <- ggplot(number_bp_by_gene_type[number_bp_by_gene_type$Var1 %in% names(which(table(branchpoints_introns$gene_biotype_broad2) > 2000)),], 
+                   aes(x=Var1, y=Freq, fill=Var2, linetype=Var2)) + 
+  scale_fill_manual(values = c("white","grey90", "grey40"), name="Branchpoint\ncount") + 
+  scale_linetype_manual(values=c("solid", "dashed","solid")) +
+  geom_bar(stat="identity", col="black", size=0.25) + 
+  coord_flip() + 
+  theme_figure +
   theme(legend.position = "none") +
   scale_x_discrete(name="Gene Biotype") + 
   scale_y_continuous(name="Fraction of Total Introns")
 
-Figure3E <- ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",], 
-                     aes(x=intron_size, col=factor(predicted_BPs_factor))) + 
+#dashed linetype here goes **super weird**
+Figure6D <- ggplot(branchpoints_introns[branchpoints_introns$status=="predicted",], 
+                     aes(x=intron_size, linetype=factor(predicted_BPs_factor))) + 
   stat_ecdf(geom="step") +
   scale_x_log10(name="Intron Size (nt)", limits=c(50, 2000000))+ 
-  scale_color_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  scale_linetype_manual(values = c("solid", "solid"), name="Annotated branchpoints") + 
   theme_figure + 
   theme(legend.position = "none") +
   scale_y_continuous(name="Cumulative Fraction")
@@ -295,33 +316,33 @@ summary <- Rmisc::summarySE(branchpoints_introns[branchpoints_introns$status=="p
 
 summary$median <- aggregate(intron_size ~ predicted_BPs_factor, branchpoints_introns[branchpoints_introns$status=="predicted",], median)[,2]
 
-Figure3E_subset=ggplot(summary, aes(x=predicted_BPs_factor, y=median,fill=predicted_BPs_factor)) +
+Figure6D_subset=ggplot(summary, aes(x=predicted_BPs_factor, y=median,fill=predicted_BPs_factor, linetype=predicted_BPs_factor)) +
   geom_bar(stat="identity", col="black", size=0.25) + geom_errorbar(aes(ymin=median-se, ymax=median+se), width=0.2, size=0.25) +
-  scale_fill_manual(values = BP_multi_colors[c(2,5)], name="Annotated branchpoints") + 
+  scale_fill_manual(values = c("grey90", "grey40"), name="Annotated branchpoints") + 
   theme_figure +
+  scale_linetype_manual(values=c("dashed", "solid")) +
   scale_y_continuous(name="Intron Size") + 
   scale_x_discrete(name="BP per intron") + 
   theme(legend.position = "none", axis.title.x = element_blank())
 
-Figure3E_all <- ggdraw() + draw_plot(Figure3E, 0,0,1,1) + 
-  draw_plot(Figure3E_subset, 0.5,0.2,0.45,.6)
+Figure6D_all <- ggdraw() + draw_plot(Figure6D, 0,0,1,1) + 
+  draw_plot(Figure6D_subset, 0.5,0.2,0.45,.6)
 
-Figure3E <- Figure3E_all
+Figure6D <- Figure6D_all
 
-Figure3 <- ggdraw() + 
-  draw_plot(Figure3A, 0.0,0.5,0.4,0.5) + 
-  draw_plot(Figure3B, 0.4,0.5,0.35,0.5) + 
-  draw_plot(Figure3C, 0.75,0.3,0.25,0.7) + 
-  draw_plot(Figure3D, 0.0,0.0,0.4,0.5) + 
-  draw_plot(Figure3E, 0.4,0.0,0.35,0.5) +
-  draw_plot_label(c("A","B","C","D","E"), c(0,0.4,0.75,0,0.4), c(1,1,1,.5,.5), size=12)
+Figure5 <- ggdraw() + 
+  draw_plot(Figure6A, 0.0,0.5,0.5,0.5) + 
+  draw_plot(Figure6B, 0.5,0.5,0.5,0.5) + 
+  draw_plot(Figure6C, 0.0,0.0,0.4,0.5) + 
+  draw_plot(Figure6D, 0.4,0.0,0.35,0.5) +
+  draw_plot_label(c("A","B","C","D"), c(0,0.5,0,0.4), c(1,1,.5,.5), size=12)
 
-pdf("Figures/Figure3.pdf", useDingbats = F, height=3, width=6.5)
-Figure3
+pdf("Figures/Figure6.pdf", useDingbats = F, height=3, width=6.5)
+Figure6
 dev.off()
 
 
-# Figure 4
+# Figure 5
 
 load("data/branchpointer_example_figures.Rdata")
 
@@ -446,7 +467,7 @@ plot.seq.brca2 <- ggplot(brca2_attributes_df, aes(x = to_3prime_point*-1, y = 1,
                        breaks = seq(-45,-17, 5), name ="Distance to 3' exon (nt)")
 
 
-Figure4 <- ggdraw() + 
+Figure5 <- ggdraw() + 
     draw_plot(plot.seq.brca2, 0.05,0.05,0.3,0.1) + 
     draw_plot(plot.prob.brca, 0.05,0.1,0.3,0.3) + 
     draw_plot(plot.U2.brca2, 0.05,0.0,0.3,0.1) +
@@ -457,8 +478,8 @@ Figure4 <- ggdraw() +
     draw_plot(plot.prob.alt, 0.75,0.1,0.25,0.3) + 
     draw_plot(plot.U2.alt, 0.75,0.0,0.25,0.1) 
 
-pdf("Figures/Figure4.pdf", height=4, width=6.5)
-Figure4
+pdf("Figures/Figure5.pdf", height=4, width=6.5)
+Figure5
 dev.off()
 library(pheatmap)
 pheatmap(pheat_attributes_rs587776767[,c(28:55)], cluster_rows = F,cluster_cols = F, border_color = NA, filename="Figures/pheat_top_r_b.pdf",height=1,width=1.8, fontsize=5,legend=F)
@@ -776,7 +797,7 @@ FigureS9_right <- ggplot(prediction_subset,
   
 
 FigureS9 <- ggdraw() + 
-  draw_plot(FigureS10_right, 0.6,0, 0.4,1)
+  draw_plot(FigureS9_right, 0.6,0, 0.4,1)
 
 pdf("Figures/FigureS9.pdf", width=5, height=2)
 FigureS9
